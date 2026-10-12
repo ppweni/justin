@@ -1,5 +1,7 @@
 # Justin
 
+![Justin: a time series, a question and answer options go in, the answer comes out](assets/banner.jpg)
+
 Time-series question answering with direct Choice, Noul (yes/no) and Score outputs. No generated text.
 
 A frozen time-series foundation model (**Chronos-2**) and a frozen MiniLM text encoder feed a small trainable
