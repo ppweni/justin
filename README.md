@@ -7,13 +7,15 @@ cross-attention head. LoRA adapters can unfreeze the top blocks of the series en
 
 ## Versions
 
-One GitHub repo (`justin`) holds the code for every version. Each backbone gets its own Hugging Face model repo,
-`justin-<backbone>`, and each release is a git tag `vX.Y.Z` with a checkpoint named
-`justin-vX.Y.Z-<backbone>-<setup>.safetensors`. A new backbone means a new `SeriesEncoder` (see below) and a new HF repo.
+One GitHub repo (`justin`) holds the code for every version. Each combination of frozen backbones gets its own
+Hugging Face model repo, `justin-<series>-<text>` (for example `justin-chronos-minilm`), so either the time-series
+encoder or the text encoder can change later. Each release is a git tag `vX.Y.Z` with a file named
+`justin-vX.Y.Z-<series>-<text>-<setup>.safetensors`. A new backbone means a new `SeriesEncoder` (see below) or text
+encoder, and a new HF repo.
 
-| version | backbone | HF repo | checkpoint | setup |
+| version | series backbone | HF repo | checkpoint | setup |
 |---|---|---|---|---|
-| `v0.1.0` | Chronos-2 (`amazon/chronos-2`, Apache-2.0) | `justin-chronos` | `justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors` (33 MB) | MiniLM text encoder, `signal_skip`, LoRA (rank 8) on the top 4 of 12 Chronos-2 blocks, trained jointly on HAR, sleep, TSQA and ECG |
+| `v0.1.0` | Chronos-2 (`amazon/chronos-2`, Apache-2.0) | `justin-chronos-minilm` | `justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors` (33 MB) | text encoder MiniLM, `signal_skip`, LoRA (rank 8) on the top 4 of 12 Chronos-2 blocks, trained jointly on HAR, sleep, TSQA and ECG |
 
 A published file holds only what this project trained (fusion, heads, `signal_skip`, LoRA adapters), not the
 frozen backbones. It records the exact Hub revisions of those backbones, and loading downloads exactly those:
@@ -59,7 +61,7 @@ from src.pretrained import answer, load_pretrained
 
 # a local file, or a Hugging Face repo id plus the filename
 model, config = load_pretrained(
-    "<owner>/justin-chronos", filename="justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors"
+    "<owner>/justin-chronos-minilm", filename="justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors"
 )
 
 series = torch.randn(3, 128)  # [channels, time]

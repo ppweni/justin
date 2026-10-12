@@ -20,7 +20,7 @@ def load_pretrained(
 ) -> tuple[SystemOne, Config]:
     """Load a ``.safetensors`` export (or a full ``.pt`` checkpoint) from a file or a Hub repo.
 
-    ``source`` is a local file, or a repo id such as ``owner/justin-chronos`` with the file's
+    ``source`` is a local file, or a repo id such as ``owner/justin-chronos-minilm`` with the file's
     ``filename`` (and optionally the repo ``revision``). An export records the exact revisions of
     the frozen Chronos-2 and MiniLM weights it was trained on, and those are what get downloaded.
     Returns the model in eval mode and its config; ``model.temperatures`` holds the fitted
