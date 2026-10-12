@@ -56,23 +56,29 @@ pip install "justin @ git+https://github.com/ppweni/justin@v0.1.0"   # or: uv ad
 ```
 
 ```python
-import torch
-from justin.pretrained import answer, load_pretrained
+import numpy as np
+from justin import Justin
 
-# a local file, or a Hugging Face repo id plus the filename
-model, config = load_pretrained(
-    "<owner>/justin-chronos-minilm", filename="justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors"
+model = Justin.from_pretrained(
+    "ppweni/justin-chronos-minilm",
+    filename="justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors",
+    revision="v0.1.0",
 )
 
-series = torch.randn(3, 128)  # [channels, time]
-answer(model, series, "What activity is shown?", ["walking", "sitting", "lying"])  # -> one option
-answer(model, series, "Is the signal rising?")                                      # -> True / False
+series = np.random.randn(3, 128)  # [channels, time]; a [time] vector is one channel
+options = ["walking", "sitting", "lying"]
+model.answer(series, "What activity is shown?", options)          # -> one of the options
+model.probabilities(series, "What activity is shown?", options)   # -> {"walking": 0.002, "sitting": 0.861, ...} (random input)
+model.answer(series, "Is the signal rising?")                     # -> True / False
+model.probabilities(series, "Is the signal rising?")              # -> P(yes)
 ```
 
-`SystemOne.forward(series [B,C,T], questions, options=..., head="choice" | "noul" | "score")` returns raw logits.
-Choice can only select one of the supplied option strings; include relevant metadata in the question text.
+`Justin.answer` takes one signal and one question. Choice can only select one of the supplied option strings; include
+relevant metadata in the question text. `probabilities` applies the temperatures fitted at the end of training.
+`model.system` is the underlying `SystemOne` module, whose `forward(series [B,C,T], questions, options=...,
+head="choice" | "noul" | "score")` returns raw logits for batches.
 The first load also downloads the frozen Chronos-2 and MiniLM weights, at the revisions recorded in the file.
-`model.temperatures` holds the fitted calibration temperatures per head (see `justin.training.calibration.probabilities`).
+`model.temperatures` holds the fitted calibration temperatures per head.
 
 The file is safetensors with the model config, revisions and temperatures in its metadata (also written to a `.json`
 beside it). A full training checkpoint (`.pt`) loads too. To publish a trained checkpoint:
@@ -147,7 +153,7 @@ test split is for finished models only.
 
 ```text
 justin/model/        encoders.py (SeriesEncoder, Chronos-2, MiniLM), chronos2.py, fusion.py, lora.py, model.py (SystemOne)
-justin/pretrained.py load_pretrained / answer;  justin/export.py export to safetensors
+justin/pretrained.py Justin (from_pretrained / answer / probabilities);  justin/export.py export to safetensors
 justin/cache/        feature cache, cached datasets and collation
 justin/training/     run.py, train.py, evaluate.py, loss.py, optimizer.py, ...
 justin/data/         the four dataset adapters

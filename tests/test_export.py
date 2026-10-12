@@ -11,7 +11,7 @@ from justin.__main__ import main
 from justin.config import Config
 from justin.export import backbone_revisions, export_checkpoint, read_export
 from justin.model import Chronos2Encoder, SystemOne, TextEncoder
-from justin.pretrained import answer, load_pretrained
+from justin.pretrained import Justin, load_pretrained
 
 CONFIG = Config(
     dataset="har", hidden_dim=16, signal_skip=True, series_lora_layers=1, lora_rank=4,
@@ -113,7 +113,9 @@ def test_loading_an_export_reproduces_the_trained_model_with_the_recorded_revisi
         loaded(series[None], ["is it ?"], options=options),
         model(series[None], ["is it ?"], options=options),
     )
-    assert answer(loaded, series, "is it ?", options) == answer(model, series, "is it ?", options)
+    assert Justin(loaded, config).answer(series, "is it ?", options) == Justin(model, config).answer(
+        series, "is it ?", options
+    )
 
 
 def test_loading_rejects_a_file_missing_trained_tensors(tmp_path, trained):

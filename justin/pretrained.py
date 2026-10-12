@@ -1,14 +1,20 @@
 """Load a published Justin model and answer a question about a signal."""
 
 from pathlib import Path
+from typing import TypeAlias
 
+import numpy as np
 import torch
 
 from .config import Config
 from .export import FROZEN_PREFIXES, read_export
 from .model import SystemOne
+from .model.model import Head
+from .training.calibration import probabilities
 from .training.evaluate import load_checkpoint
 from .training.run import build_model
+
+ArrayLike: TypeAlias = "torch.Tensor | np.ndarray | list"
 
 
 def load_pretrained(
@@ -50,23 +56,76 @@ def load_pretrained(
     return model.to(torch.device(device)).eval(), config
 
 
-@torch.no_grad()
-def answer(
-    model: SystemOne, series: torch.Tensor, question: str, options: list[str] | None = None
-) -> str | bool:
-    """Answer one question about one signal.
+class Justin:
+    """A trained Justin model that answers questions about signals.
 
-    ``series`` is ``[channels, time]``. With ``options`` the Choice head returns the best option;
-    without them the Noul (yes/no) head returns a bool.
+    ``Justin.from_pretrained(...)`` loads a published file; ``model.answer(series, question, options)``
+    picks one of the options (or answers yes/no without options). ``model.system`` is the underlying
+    ``SystemOne`` module and ``model.config`` its training config.
     """
-    if series.ndim != 2:
-        raise ValueError("series must have shape [channels, time]")
-    device = next(model.parameters()).device
-    batch = series.unsqueeze(0).to(device)
-    if options is None:
-        return bool(model(batch, [question], head="noul").item() >= 0)
-    logits = model(batch, [question], options=options)
-    return options[int(logits.argmax(-1))]
+
+    def __init__(self, system: SystemOne, config: Config):
+        self.system = system.eval()
+        self.config = config
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        source: str | Path,
+        *,
+        filename: str | None = None,
+        revision: str | None = None,
+        device: str | None = None,
+    ) -> "Justin":
+        """Load a published model from a local file or a Hugging Face repo (see ``load_pretrained``)."""
+        return cls(*load_pretrained(source, filename=filename, revision=revision, device=device))
+
+    @property
+    def temperatures(self) -> dict[str, float]:
+        """Calibration temperatures fitted per head (``{}`` if the file has none)."""
+        return self.system.temperatures
+
+    @property
+    def device(self) -> torch.device:
+        return next(self.system.parameters()).device
+
+    @torch.no_grad()
+    def answer(
+        self, series: ArrayLike, question: str, options: list[str] | None = None
+    ) -> str | bool:
+        """Answer one question about one signal.
+
+        ``series`` is ``[channels, time]`` (or ``[time]`` for a single channel). With ``options`` the
+        best option is returned; without them the yes/no head returns a bool.
+        """
+        logits, head = self._logits(series, question, options)
+        if options is None:
+            return bool(logits.item() >= 0)
+        return options[int(logits.argmax(-1))]
+
+    @torch.no_grad()
+    def probabilities(
+        self, series: ArrayLike, question: str, options: list[str] | None = None
+    ) -> dict[str, float] | float:
+        """Calibrated probabilities: ``{option: p}`` with options, else P(yes)."""
+        logits, head = self._logits(series, question, options)
+        probability = probabilities(logits, head, self.temperatures.get(head, 1.0))
+        if options is None:
+            return float(probability.item())
+        return dict(zip(options, probability[0].tolist(), strict=True))
+
+    def _logits(
+        self, series: ArrayLike, question: str, options: list[str] | None
+    ) -> tuple[torch.Tensor, Head]:
+        tensor = torch.as_tensor(series, dtype=torch.float32)
+        if tensor.ndim == 1:
+            tensor = tensor.unsqueeze(0)
+        if tensor.ndim != 2:
+            raise ValueError("series must have shape [channels, time] or [time]")
+        batch = tensor.unsqueeze(0).to(self.device)
+        if options is None:
+            return self.system(batch, [question], head="noul"), "noul"
+        return self.system(batch, [question], options=options), "choice"
 
 
 def _default_device() -> str:
