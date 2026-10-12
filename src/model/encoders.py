@@ -20,6 +20,8 @@ class SeriesEncoder(nn.Module, ABC):
     """
 
     name: str  # cache id, e.g. "chronos"
+    repo: str  # Hugging Face repo of the pretrained weights
+    revision: str  # pinned commit of `repo`; published checkpoints record the one they used
     hidden_size: int
 
     def __init__(self, backbone: nn.Module):
@@ -28,7 +30,8 @@ class SeriesEncoder(nn.Module, ABC):
 
     @classmethod
     @abstractmethod
-    def from_pretrained(cls) -> "SeriesEncoder": ...
+    def from_pretrained(cls, revision: str | None = None) -> "SeriesEncoder":
+        """Load the frozen backbone at `revision` (default: the class's pinned revision)."""
 
     @property
     @abstractmethod
@@ -99,6 +102,8 @@ class Chronos2Encoder(SeriesEncoder):
     """
 
     name = "chronos"
+    repo = "amazon/chronos-2"
+    revision = "29ec3766d36d6f73f0696f85560a422f50e8498c"
 
     def __init__(self, backbone: Chronos2):
         super().__init__(backbone)
@@ -107,8 +112,8 @@ class Chronos2Encoder(SeriesEncoder):
         self._patch_length = backbone.patch_length
 
     @classmethod
-    def from_pretrained(cls):
-        return cls(Chronos2.from_pretrained())
+    def from_pretrained(cls, revision: str | None = None):
+        return cls(Chronos2.from_pretrained(revision or cls.revision))
 
     @property
     def num_blocks(self) -> int:
@@ -161,6 +166,9 @@ SERIES_ENCODERS: dict[str, type[SeriesEncoder]] = {
 class TextEncoder(nn.Module):
     """Frozen MiniLM sentence embeddings, shared by questions and options."""
 
+    repo = "sentence-transformers/all-MiniLM-L6-v2"
+    revision = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+
     def __init__(self, backbone: PreTrainedModel, tokenizer):
         super().__init__()
         self.backbone = backbone.requires_grad_(False).eval()
@@ -170,9 +178,12 @@ class TextEncoder(nn.Module):
         self.trainable: bool = False
 
     @classmethod
-    def from_pretrained(cls):
-        name = "sentence-transformers/all-MiniLM-L6-v2"
-        return cls(AutoModel.from_pretrained(name), AutoTokenizer.from_pretrained(name))
+    def from_pretrained(cls, revision: str | None = None):
+        revision = revision or cls.revision
+        return cls(
+            AutoModel.from_pretrained(cls.repo, revision=revision),
+            AutoTokenizer.from_pretrained(cls.repo, revision=revision),
+        )
 
     def train(self, mode: bool = True):
         return super().train(False)

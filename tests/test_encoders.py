@@ -12,7 +12,8 @@ def test_chronos2_factory(make_chronos2_encoder):
         "src.model.encoders.Chronos2.from_pretrained", return_value=encoder.backbone
     ) as load:
         result = Chronos2Encoder.from_pretrained()
-    load.assert_called_once_with()
+        Chronos2Encoder.from_pretrained(revision="abc")
+    assert [c.args for c in load.call_args_list] == [(Chronos2Encoder.revision,), ("abc",)]
     assert result.hidden_size == 16
 
 
@@ -26,8 +27,9 @@ def test_text_factory(text_encoder):
         ) as tokenize,
     ):
         encoder = TextEncoder.from_pretrained()
-    load.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2")
-    tokenize.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2")
+    pin = TextEncoder.revision
+    load.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2", revision=pin)
+    tokenize.assert_called_once_with("sentence-transformers/all-MiniLM-L6-v2", revision=pin)
     assert encoder.hidden_size == 16
 
 

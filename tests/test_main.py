@@ -236,6 +236,7 @@ def test_training_run_saves_complete_checkpoint(
             "fusion_layers": config.fusion_layers,
             "dropout": config.dropout,
             "series_encoder": config.series_encoder,
+            "revisions": None,  # the encoder classes' pinned revisions
             "series_lora_layers": config.series_lora_layers,
             "minilm_lora": config.minilm_lora,
             "lora_rank": config.lora_rank,

@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -44,9 +45,11 @@ def test_load_pretrained_downloads_from_the_hub_when_given_a_repo(tmp_path):
         load_pretrained("owner/justin-chronos")
     with (
         patch("huggingface_hub.hf_hub_download", return_value=str(tmp_path / "m.pt")) as download,
-        patch("src.pretrained.load_checkpoint", return_value=("model", "config")) as load,
+        patch("src.pretrained.load_checkpoint", return_value=(SimpleNamespace(), "config")) as load,
     ):
         result = load_pretrained("owner/justin-chronos", filename="m.pt", device="cpu")
-    download.assert_called_once_with(repo_id="owner/justin-chronos", filename="m.pt")
+    download.assert_called_once_with(
+        repo_id="owner/justin-chronos", filename="m.pt", revision=None
+    )
     load.assert_called_once()
-    assert result == ("model", "config")
+    assert result[1] == "config" and result[0].temperatures == {}

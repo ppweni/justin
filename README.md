@@ -9,11 +9,19 @@ cross-attention head. LoRA adapters can unfreeze the top blocks of the series en
 
 One GitHub repo (`justin`) holds the code for every version. Each backbone gets its own Hugging Face model repo,
 `justin-<backbone>`, and each release is a git tag `vX.Y.Z` with a checkpoint named
-`justin-vX.Y.Z-<backbone>-<setup>.pt`. A new backbone means a new `SeriesEncoder` (see below) and a new HF repo.
+`justin-vX.Y.Z-<backbone>-<setup>.safetensors`. A new backbone means a new `SeriesEncoder` (see below) and a new HF repo.
 
 | version | backbone | HF repo | checkpoint | setup |
 |---|---|---|---|---|
-| `v0.1.0` | Chronos-2 (`amazon/chronos-2`, Apache-2.0) | `justin-chronos` | `justin-v0.1.0-chronos2-minilm-lora4-skip.pt` | MiniLM text encoder, `signal_skip`, LoRA (rank 8) on the top 4 of 12 Chronos-2 blocks, trained jointly on HAR, sleep, TSQA and ECG |
+| `v0.1.0` | Chronos-2 (`amazon/chronos-2`, Apache-2.0) | `justin-chronos` | `justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors` (33 MB) | MiniLM text encoder, `signal_skip`, LoRA (rank 8) on the top 4 of 12 Chronos-2 blocks, trained jointly on HAR, sleep, TSQA and ECG |
+
+A published file holds only what this project trained (fusion, heads, `signal_skip`, LoRA adapters), not the
+frozen backbones. It records the exact Hub revisions of those backbones, and loading downloads exactly those:
+
+| frozen backbone | repo | revision |
+|---|---|---|
+| Chronos-2 | `amazon/chronos-2` | `29ec3766d36d6f73f0696f85560a422f50e8498c` |
+| MiniLM | `sentence-transformers/all-MiniLM-L6-v2` | `1110a243fdf4706b3f48f1d95db1a4f5529b4d41` |
 
 ### v0.1.0 results
 
@@ -49,9 +57,9 @@ uv sync
 import torch
 from src.pretrained import answer, load_pretrained
 
-# a local .pt file, or a Hugging Face repo id plus the checkpoint filename
+# a local file, or a Hugging Face repo id plus the filename
 model, config = load_pretrained(
-    "<owner>/justin-chronos", filename="justin-v0.1.0-chronos2-minilm-lora4-skip.pt"
+    "<owner>/justin-chronos", filename="justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors"
 )
 
 series = torch.randn(3, 128)  # [channels, time]
@@ -61,10 +69,19 @@ answer(model, series, "Is the signal rising?")                                  
 
 `SystemOne.forward(series [B,C,T], questions, options=..., head="choice" | "noul" | "score")` returns raw logits.
 Choice can only select one of the supplied option strings; include relevant metadata in the question text.
-The first load also downloads the frozen Chronos-2 and MiniLM weights from their own repos.
+The first load also downloads the frozen Chronos-2 and MiniLM weights, at the revisions recorded in the file.
+`model.temperatures` holds the fitted calibration temperatures per head (see `src.training.calibration.probabilities`).
 
-The checkpoint is a `torch.save` file with `model` (state dict) and `config` (the training `Config`), loaded with
-`weights_only=True`.
+The file is safetensors with the model config, revisions and temperatures in its metadata (also written to a `.json`
+beside it). A full training checkpoint (`.pt`) loads too. To publish a trained checkpoint:
+
+```sh
+uv run python -m src export runs/model.pt justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors
+```
+
+Export checks that every frozen tensor in the checkpoint equals the pinned backbone and fails otherwise, so a wrong
+pin is caught before release. To move to newer backbones, change `revision` on `Chronos2Encoder` / `TextEncoder`
+(`src/model/encoders.py`) and retrain; old files keep loading the revisions they recorded.
 
 ## How a question is answered
 
@@ -128,7 +145,7 @@ test split is for finished models only.
 
 ```text
 src/model/        encoders.py (SeriesEncoder, Chronos-2, MiniLM), chronos2.py, fusion.py, lora.py, model.py (SystemOne)
-src/pretrained.py load_pretrained / answer
+src/pretrained.py load_pretrained / answer;  src/export.py export to safetensors
 src/cache/        feature cache, cached datasets and collation
 src/training/     run.py, train.py, evaluate.py, loss.py, optimizer.py, ...
 src/data/         the four dataset adapters
@@ -142,8 +159,7 @@ The code is licensed under Apache-2.0 (see `LICENSE`).
 ## Third-party models
 
 Chronos-2 (`amazon/chronos-2`, Apache-2.0) and `sentence-transformers/all-MiniLM-L6-v2` (Apache-2.0) are downloaded
-from Hugging Face and are not redistributed in this repository. A published checkpoint contains their weights
-alongside the trained parts.
+from Hugging Face at pinned revisions and are not redistributed in this repository or in the published files.
 
 ## References
 

@@ -90,13 +90,18 @@ def evaluate_model(
     return {name: score(predictions(model, batches)) for name, batches in loaders.items()}
 
 
-def load_checkpoint(path: str | Path, device: str | None = None) -> tuple[SystemOne, Config]:
-    """Rebuild the model a checkpoint was trained as and load its weights (eval mode)."""
+def load_checkpoint(
+    path: str | Path, device: str | None = None, revisions: Mapping[str, str] | None = None
+) -> tuple[SystemOne, Config]:
+    """Rebuild the model a checkpoint was trained as and load its weights (eval mode).
+
+    `revisions` pins the frozen backbones; the default is the encoder classes' pinned revisions.
+    """
     checkpoint = torch.load(path, map_location="cpu", weights_only=True)
     raw = dict(checkpoint["config"])
     known = {field.name for field in dataclasses.fields(Config)}
     config = Config(**{key: value for key, value in raw.items() if key in known})
-    model = build_model(config)
+    model = build_model(config, revisions)
     model.load_state_dict(checkpoint["model"])
     model.to(torch.device(device or config.device)).eval()
     return model, config

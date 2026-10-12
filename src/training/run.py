@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import asdict
 from itertools import chain
 from pathlib import Path
@@ -16,8 +17,11 @@ from .mixing import BalancedBatches
 from .train import per_dataset_best, train
 
 
-def build_model(config: Config) -> SystemOne:
-    """Pretrained frozen encoders plus untrained fusion and heads, as configured."""
+def build_model(config: Config, revisions: Mapping[str, str] | None = None) -> SystemOne:
+    """Pretrained frozen encoders plus untrained fusion and heads, as configured.
+
+    `revisions` pins the backbones ("series", "text") to Hub commits; default is the pinned ones.
+    """
     return SystemOne.from_pretrained(
         num_classes=config.num_classes,
         score_levels=config.score_levels,
@@ -28,6 +32,7 @@ def build_model(config: Config) -> SystemOne:
         option_attention=config.option_attention,
         signal_skip=config.signal_skip,
         series_encoder=config.series_encoder,
+        revisions=revisions,
         series_lora_layers=config.series_lora_layers,
         minilm_lora=config.minilm_lora,
         lora_rank=config.lora_rank,

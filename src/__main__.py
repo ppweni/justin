@@ -102,5 +102,19 @@ def evaluate(checkpoints, split, datasets, device, batch_size, root, download, o
         click.echo(f"\nWrote {output}")
 
 
+@main.command()
+@click.argument("checkpoint", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("output", type=click.Path(dir_okay=False, path_type=Path))
+def export(checkpoint: Path, output: Path) -> None:
+    """Write the trained part of CHECKPOINT (.pt) to OUTPUT (.safetensors) with a .json beside it."""
+    from .export import export_checkpoint
+
+    try:
+        path = export_checkpoint(checkpoint, output)
+    except ValueError as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(f"Wrote {path} ({path.stat().st_size / 1e6:.1f} MB) and {path.with_suffix('.json')}")
+
+
 if __name__ == "__main__":
     main()

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Literal
 
 import torch
@@ -38,6 +39,8 @@ class SystemOne(nn.Module):
         lora_alpha: int = 16,
     ):
         super().__init__()
+        # Calibration temperatures per head, filled when loading a published model.
+        self.temperatures: dict[str, float] = {}
         if hidden_dim < 1 or score_levels < 2:
             raise ValueError("hidden_dim must be positive and score_levels >= 2")
         if num_classes is not None and not 2 <= num_classes <= 255:
@@ -102,14 +105,20 @@ class SystemOne(nn.Module):
         *,
         with_text: bool = True,
         series_encoder: str = "chronos",
+        revisions: Mapping[str, str] | None = None,
         **kwargs,
     ):
-        """Load frozen backbones; fusion and heads start untrained."""
+        """Load frozen backbones; fusion and heads start untrained.
+
+        `revisions` maps "series" and "text" to Hub commits; omitted entries use the pinned
+        revision of the encoder class.
+        """
         if series_encoder not in SERIES_ENCODERS:
             raise ValueError(f"unknown series_encoder: {series_encoder}")
+        revisions = revisions or {}
         return cls(
-            SERIES_ENCODERS[series_encoder].from_pretrained(),
-            TextEncoder.from_pretrained() if with_text else None,
+            SERIES_ENCODERS[series_encoder].from_pretrained(revision=revisions.get("series")),
+            TextEncoder.from_pretrained(revision=revisions.get("text")) if with_text else None,
             **kwargs,
         )
 

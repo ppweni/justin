@@ -187,11 +187,11 @@ class Chronos2(nn.Module):
         )
 
     @classmethod
-    def from_pretrained(cls) -> "Chronos2":
+    def from_pretrained(cls, revision: str | None = None) -> "Chronos2":
         from huggingface_hub import hf_hub_download
         from safetensors.torch import load_file
 
-        path = hf_hub_download(CHECKPOINT_REPO, "model.safetensors")
+        path = hf_hub_download(CHECKPOINT_REPO, "model.safetensors", revision=revision)
         state = {
             key: value
             for key, value in load_file(path, device="cpu").items()

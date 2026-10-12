@@ -20,7 +20,7 @@ def test_pretrained_factory(make_chronos2_encoder, text_encoder, with_text):
         ) as text_load,
     ):
         model = SystemOne.from_pretrained(with_text=with_text, num_classes=3)
-    series_load.assert_called_once_with()
+    series_load.assert_called_once_with(revision=None)
     assert text_load.call_count == int(with_text)
     assert (model.text_encoder is not None) == with_text
     assert model(torch.randn(2, 1, 8)).shape == (2, 3)
