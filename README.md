@@ -11,7 +11,8 @@ One GitHub repo (`justin`) holds the code for every version. Each combination of
 Hugging Face model repo, `justin-<series>-<text>` (for example `justin-chronos-minilm`), so either the time-series
 encoder or the text encoder can change later. Each release is a git tag `vX.Y.Z` with a file named
 `justin-vX.Y.Z-<series>-<text>-<setup>.safetensors`. A new backbone means a new `SeriesEncoder` (see below) or text
-encoder, and a new HF repo.
+encoder, and a new HF repo. All repos are listed in the
+[Justin collection](https://huggingface.co/collections/ppweni/justin).
 
 | version | series backbone | HF repo | checkpoint | setup |
 |---|---|---|---|---|
