@@ -147,7 +147,7 @@ uv run pytest -q && uv run ruff check justin tests
 ```
 
 Every YAML key of `CONFIG.yaml` is a field of `Config` in `justin/config.py` (datasets, `series_encoder`,
-`series_lora_layers`, `signal_skip`, `hidden_dim`, `epochs`, `cache`, `output`, ...). The v0.1.0 setup is
+`series_lora_layers`, `signal_skip`, `hidden_dim`, `epochs`, `cache`, `output`, `seed`, ...). The v0.1.0 setup is
 `signal_skip: true`, `series_lora_layers: 4`, `lora_rank: 8`, `lora_learning_rate: 3e-5`, all four datasets, with a
 `cache` directory (about 20 GB of RAM). Checkpoints are selected by pooled validation balanced accuracy, and the
 test split is for finished models only.

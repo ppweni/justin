@@ -69,6 +69,8 @@ def run(config: Config) -> Path:
             raise ValueError(f"num_classes must be {len(first['options'])} for {name}")
         splits[name] = (train_data, validation_data)
         print(f"  {name}: {len(train_data)} train / {len(validation_data)} validation", flush=True)
+    if config.seed is not None:
+        torch.manual_seed(config.seed)
     model = build_model(config).to(device)
     # LoRA moves the cache boundary: cache the frozen prefix (signal) and skip text.
     prefix_start = model.lora_boundary if config.series_lora_layers > 0 else None

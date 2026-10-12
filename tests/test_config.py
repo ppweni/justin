@@ -36,6 +36,7 @@ def test_defaults():
         db=None,
         cache=None,
         class_weighted=[],
+        seed=None,
     )
 
 
@@ -70,6 +71,7 @@ def test_yaml_overrides(tmp_path):
         db=None,
         cache=None,
         class_weighted=["har"],
+        seed=3,
     )
     path.write_text(yaml.safe_dump(values))
     assert asdict(Config.from_yaml(str(path))) == values

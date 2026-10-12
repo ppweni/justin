@@ -40,6 +40,7 @@ class Config:
     db: str | None = None
     cache: str | None = None
     class_weighted: list[str] = field(default_factory=list)
+    seed: int | None = None  # seeds torch before the model is built, so runs can be repeated
 
     def __post_init__(self) -> None:
         if not isinstance(self.root, str):
@@ -96,6 +97,8 @@ class Config:
             raise ValueError("db must be a nonempty string or null")
         if self.cache is not None and (not isinstance(self.cache, str) or not self.cache.strip()):
             raise ValueError("cache must be a nonempty string or null")
+        if self.seed is not None and (type(self.seed) is not int or self.seed < 0):
+            raise ValueError("seed must be a nonnegative integer or null")
         if not isinstance(self.class_weighted, list) or any(
             name not in self.datasets for name in self.class_weighted
         ):
