@@ -7,15 +7,15 @@ import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-from src.config import Config
-from src.data import HARDataset
-from src.model import SystemOne
-from src.training import train, validate
-from src.training.batch import prepare_batch
-from src.training.loss import compute_loss, negative_log_likelihood
-from src.training.optimizer import build_optimizer
-from src.training.step import train_step
-from src.training.train import per_dataset_best, train_epoch
+from justin.config import Config
+from justin.data import HARDataset
+from justin.model import SystemOne
+from justin.training import train, validate
+from justin.training.batch import prepare_batch
+from justin.training.loss import compute_loss, negative_log_likelihood
+from justin.training.optimizer import build_optimizer
+from justin.training.step import train_step
+from justin.training.train import per_dataset_best, train_epoch
 
 
 @pytest.fixture
@@ -125,7 +125,7 @@ def test_step_updates_heads_and_preserves_encoders(model, batch, head):
     assert model.series_encoder.training
     assert not model.series_encoder.backbone.training
     assert model.text_encoder is not None and not model.text_encoder.training
-    from src.model.fusion import CrossAttentionFusion
+    from justin.model.fusion import CrossAttentionFusion
     assert isinstance(model.fusion, CrossAttentionFusion)
     assert not torch.equal(
         before["fusion.query_projection.weight"], model.fusion.query_projection.weight
@@ -208,7 +208,7 @@ def test_empty_loaders_fail(model):
 def test_epoch_loss_weights_samples(model, monkeypatch):
     losses = iter([1.0, 4.0])
     monkeypatch.setattr(
-        import_module("src.training.train"), "train_step", lambda *args: next(losses)
+        import_module("justin.training.train"), "train_step", lambda *args: next(losses)
     )
     result = train_epoch(
         model,
@@ -219,7 +219,7 @@ def test_epoch_loss_weights_samples(model, monkeypatch):
 
 
 def test_epoch_returns_batch_count(model, monkeypatch):
-    monkeypatch.setattr(import_module("src.training.train"), "train_step", lambda *args: 0.0)
+    monkeypatch.setattr(import_module("justin.training.train"), "train_step", lambda *args: 0.0)
     batches = [{"target": torch.zeros(1)} for _ in range(7)]
     _, batch_count = train_epoch(model, batches, build_optimizer(model, Config()))
     assert batch_count == 7
@@ -227,14 +227,14 @@ def test_epoch_returns_batch_count(model, monkeypatch):
 
 def test_epoch_uses_total_for_tqdm(model, monkeypatch):
     captured = {}
-    real_tqdm = import_module("src.training.train").tqdm
+    real_tqdm = import_module("justin.training.train").tqdm
 
     def spy_tqdm(it, **kwargs):
         captured.update(kwargs)
         return real_tqdm(it, **kwargs)
 
-    monkeypatch.setattr(import_module("src.training.train"), "train_step", lambda *args: 0.0)
-    monkeypatch.setattr(import_module("src.training.train"), "tqdm", spy_tqdm)
+    monkeypatch.setattr(import_module("justin.training.train"), "train_step", lambda *args: 0.0)
+    monkeypatch.setattr(import_module("justin.training.train"), "tqdm", spy_tqdm)
     train_epoch(
         model,
         [{"target": torch.zeros(1)}],

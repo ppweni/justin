@@ -5,13 +5,13 @@ import os
 import pytest
 import torch
 
-from src.config import Config
-from src.data import Sample, TimeSeriesDataset
-from src.model import SystemOne
-from src.training.mixing import BalancedBatches
-from src.training.optimizer import build_optimizer
-from src.training.train import train_epoch
-from src.training.validation import validate_datasets
+from justin.config import Config
+from justin.data import Sample, TimeSeriesDataset
+from justin.model import SystemOne
+from justin.training.mixing import BalancedBatches
+from justin.training.optimizer import build_optimizer
+from justin.training.train import train_epoch
+from justin.training.validation import validate_datasets
 
 
 def trend_batches(channels, lengths, *, seed, size):

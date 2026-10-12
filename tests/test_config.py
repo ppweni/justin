@@ -3,7 +3,7 @@ from dataclasses import asdict
 import pytest
 import yaml
 
-from src.config import Config
+from justin.config import Config
 
 
 def test_defaults():

@@ -2,7 +2,7 @@ import pytest
 import torch
 from torch.nn import functional as F
 
-from src.training.loss import compute_loss, ranked_probability_score
+from justin.training.loss import compute_loss, ranked_probability_score
 
 
 def test_ranked_probability_score_matches_hand_calculation():

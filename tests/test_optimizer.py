@@ -1,6 +1,6 @@
-from src.config import Config
-from src.model import SystemOne
-from src.training.optimizer import build_optimizer
+from justin.config import Config
+from justin.model import SystemOne
+from justin.training.optimizer import build_optimizer
 
 
 def test_optimizer_single_group_without_lora(make_chronos2_encoder, text_encoder):

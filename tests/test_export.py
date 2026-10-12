@@ -7,11 +7,11 @@ import torch
 from click.testing import CliRunner
 from safetensors.torch import save_file
 
-from src.__main__ import main
-from src.config import Config
-from src.export import backbone_revisions, export_checkpoint, read_export
-from src.model import Chronos2Encoder, SystemOne, TextEncoder
-from src.pretrained import answer, load_pretrained
+from justin.__main__ import main
+from justin.config import Config
+from justin.export import backbone_revisions, export_checkpoint, read_export
+from justin.model import Chronos2Encoder, SystemOne, TextEncoder
+from justin.pretrained import answer, load_pretrained
 
 CONFIG = Config(
     dataset="har", hidden_dim=16, signal_skip=True, series_lora_layers=1, lora_rank=4,
@@ -49,7 +49,7 @@ def write_checkpoint(path, model, **extra):
 def test_export_keeps_only_what_was_trained(tmp_path, trained):
     build, model = trained
     write_checkpoint(tmp_path / "m.pt", model)
-    with patch("src.export.build_model", build):
+    with patch("justin.export.build_model", build):
         out = export_checkpoint(tmp_path / "m.pt", tmp_path / "m.safetensors")
     state, meta = read_export(out)
     full = model.state_dict()
@@ -75,7 +75,7 @@ def test_export_rejects_frozen_weights_that_differ_from_the_pinned_backbones(tmp
     key = next(k for k in model.state_dict() if k.startswith("text_encoder."))
     model.state_dict()[key].add_(1.0)
     write_checkpoint(tmp_path / "m.pt", model)
-    with patch("src.export.build_model", build), pytest.raises(ValueError, match="other revisions"):
+    with patch("justin.export.build_model", build), pytest.raises(ValueError, match="other revisions"):
         export_checkpoint(tmp_path / "m.pt", tmp_path / "m.safetensors")
 
 
@@ -91,12 +91,12 @@ def test_loading_an_export_reproduces_the_trained_model_with_the_recorded_revisi
 ):
     build, model = trained
     write_checkpoint(tmp_path / "m.pt", model)
-    with patch("src.export.build_model", build):
+    with patch("justin.export.build_model", build):
         out = export_checkpoint(tmp_path / "m.pt", tmp_path / "m.safetensors")
     # Another release would record other revisions; the export, not the code pin, must win.
     state, meta = read_export(out)
     meta["revisions"]["series"]["revision"] = "old-revision"
-    with patch("src.pretrained.build_model", side_effect=build) as factory:
+    with patch("justin.pretrained.build_model", side_effect=build) as factory:
         save_file(
             state, tmp_path / "other.safetensors",
             metadata={"justin_format": "1", **{k: __import__("json").dumps(v) for k, v in meta.items()}},
@@ -107,7 +107,7 @@ def test_loading_an_export_reproduces_the_trained_model_with_the_recorded_revisi
     assert loaded.temperatures == {"choice": 1.25, "noul": 0.9}
     series = torch.randn(2, 12)
     options = ["rising", "falling"]
-    with patch("src.pretrained.build_model", build):
+    with patch("justin.pretrained.build_model", build):
         loaded, _ = load_pretrained(out, device="cpu")
     torch.testing.assert_close(
         loaded(series[None], ["is it ?"], options=options),
@@ -119,7 +119,7 @@ def test_loading_an_export_reproduces_the_trained_model_with_the_recorded_revisi
 def test_loading_rejects_a_file_missing_trained_tensors(tmp_path, trained):
     build, model = trained
     write_checkpoint(tmp_path / "m.pt", model)
-    with patch("src.export.build_model", build):
+    with patch("justin.export.build_model", build):
         out = export_checkpoint(tmp_path / "m.pt", tmp_path / "m.safetensors")
     state, meta = read_export(out)
     del state[next(k for k in state if k.startswith("fusion."))]
@@ -128,7 +128,7 @@ def test_loading_rejects_a_file_missing_trained_tensors(tmp_path, trained):
         state, tmp_path / "bad.safetensors",
         metadata={"justin_format": "1", **{k: json.dumps(v) for k, v in meta.items()}},
     )  # fmt: skip
-    with patch("src.pretrained.build_model", build), pytest.raises(ValueError, match="does not match"):
+    with patch("justin.pretrained.build_model", build), pytest.raises(ValueError, match="does not match"):
         load_pretrained(tmp_path / "bad.safetensors", device="cpu")
 
 
@@ -141,7 +141,7 @@ def test_read_export_rejects_foreign_files(tmp_path):
 def test_export_command(tmp_path, trained):
     build, model = trained
     write_checkpoint(tmp_path / "m.pt", model)
-    with patch("src.export.build_model", build):
+    with patch("justin.export.build_model", build):
         result = CliRunner().invoke(
             main, ["export", str(tmp_path / "m.pt"), str(tmp_path / "m.safetensors")]
         )

@@ -5,12 +5,12 @@ import pytest
 import torch
 from torch import nn
 
-from src import Config
-from src.model import SystemOne
-from src.training.checkpoint import save_checkpoint
-from src.training.early_stopping import EarlyStopping
-from src.training.run import run
-from src.training.train import train
+from justin import Config
+from justin.model import SystemOne
+from justin.training.checkpoint import save_checkpoint
+from justin.training.early_stopping import EarlyStopping
+from justin.training.run import run
+from justin.training.train import train
 
 
 @pytest.mark.parametrize(
@@ -92,7 +92,7 @@ def test_failed_checkpoint_write_does_not_publish_partial_data(tmp_path, monkeyp
         Path(destination).write_bytes(b"partial")
         raise OSError("disk full")
 
-    monkeypatch.setattr("src.training.checkpoint.torch.save", broken_save)
+    monkeypatch.setattr("justin.training.checkpoint.torch.save", broken_save)
     with pytest.raises(OSError, match="disk full"):
         save_checkpoint(path, {"epoch": 2}, overwrite=existing)
     if existing:
@@ -120,7 +120,7 @@ def test_train_stops_and_restores_best_even_at_epoch_limit(
     expected_epochs,
     best_epoch,
 ):
-    module = import_module("src.training.train")
+    module = import_module("justin.training.train")
     updates = []
     saved = []
 
@@ -199,11 +199,11 @@ def test_run_saves_during_training_selects_macro_loss_and_calibrates_best(
         calibrated.append(True)
         return {"choice": 1.5}
 
-    module = import_module("src.training.train")
+    module = import_module("justin.training.train")
     monkeypatch.setattr(SystemOne, "from_pretrained", lambda **kwargs: model)
     monkeypatch.setattr(module, "train_epoch", epoch)
     monkeypatch.setattr(module, "validate_datasets", validate)
-    monkeypatch.setattr("src.training.run.fit_temperatures", calibrate)
+    monkeypatch.setattr("justin.training.run.fit_temperatures", calibrate)
     assert run(config) == path
     best = torch.load(path, weights_only=True)
     assert len(epochs) == len(best["history"]) == 4
@@ -225,7 +225,7 @@ def test_best_checkpoint_survives_later_failure(
 ):
     config = Config(dataset="har", root=str(har_root), epochs=2, output=str(tmp_path / "best.pt"))
     model = SystemOne(make_chronos2_encoder(), text_encoder, hidden_dim=16)
-    module = import_module("src.training.train")
+    module = import_module("justin.training.train")
     real_epoch = module.train_epoch
     calls = 0
 
@@ -241,7 +241,7 @@ def test_best_checkpoint_survives_later_failure(
 
     monkeypatch.setattr(SystemOne, "from_pretrained", lambda **kwargs: model)
     monkeypatch.setattr(module, "train_epoch", epoch)
-    monkeypatch.setattr("src.training.run.fit_temperatures", calibrate)
+    monkeypatch.setattr("justin.training.run.fit_temperatures", calibrate)
     with pytest.raises(RuntimeError, match=f"{failure} failed"):
         run(config)
     checkpoint = torch.load(config.output, weights_only=True)

@@ -4,8 +4,8 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from src.data import HARDataset
-from src.model import SystemOne
+from justin.data import HARDataset
+from justin.model import SystemOne
 
 
 @pytest.mark.parametrize(

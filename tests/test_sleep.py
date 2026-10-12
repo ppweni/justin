@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.data import SleepDataset
+from justin.data import SleepDataset
 
 
 def test_sleep_subjects_and_nights_never_cross_splits(sleep_root):

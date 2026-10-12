@@ -4,8 +4,8 @@ import math
 import pytest
 import torch
 
-from src.training import fit_temperatures, probabilities
-from src.training.loss import negative_log_likelihood
+from justin.training import fit_temperatures, probabilities
+from justin.training.loss import negative_log_likelihood
 
 
 def calibration_batch(logits, target, head):

@@ -1,4 +1,4 @@
-"""Tests for src/persistence.Store."""
+"""Tests for justin/persistence.Store."""
 
 import json
 import sqlite3
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from src.config import Config
-from src.persistence import Store
+from justin.config import Config
+from justin.persistence import Store
 
 
 @pytest.fixture
@@ -145,10 +145,10 @@ def test_run_records_epochs_and_unique_checkpoints(
     """run() with config.db set writes DB rows and unique checkpoint files."""
     import torch
 
-    from src.config import Config
-    from src.data import DATASETS, HARDataset
-    from src.model import SystemOne
-    from src.training.run import run
+    from justin.config import Config
+    from justin.data import DATASETS, HARDataset
+    from justin.model import SystemOne
+    from justin.training.run import run
 
     db_path = tmp_path / "training.db"
     output = tmp_path / "model.pt"

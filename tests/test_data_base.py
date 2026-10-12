@@ -7,8 +7,8 @@ from zipfile import BadZipFile, ZipFile
 import pytest
 import torch
 
-from src.data import HARDataset, Sample, TimeSeriesDataset
-from src.data.base import download_csv_zip, download_file, group_split
+from justin.data import HARDataset, Sample, TimeSeriesDataset
+from justin.data.base import download_csv_zip, download_file, group_split
 
 
 def test_base_class_is_abstract(tmp_path):
@@ -127,24 +127,24 @@ class Response(BytesIO):
 
 @pytest.mark.parametrize("length", [None, 4])
 def test_download_handles_responses_with_and_without_length(tmp_path, length):
-    with patch("src.data.base.urlopen", return_value=Response(b"data", length)):
+    with patch("justin.data.base.urlopen", return_value=Response(b"data", length)):
         download_file("https://example.test/data", tmp_path / "data")
     assert (tmp_path / "data").read_bytes() == b"data"
 
 
 def test_truncated_download_is_not_cached_and_can_retry(tmp_path):
     path = tmp_path / "data"
-    with patch("src.data.base.urlopen", return_value=Response(b"part", 100)):
+    with patch("justin.data.base.urlopen", return_value=Response(b"part", 100)):
         with pytest.raises(OSError, match="incomplete"):
             download_file("https://example.test/data", path)
     assert list(tmp_path.iterdir()) == []
-    with patch("src.data.base.urlopen", return_value=Response(b"complete", 8)):
+    with patch("justin.data.base.urlopen", return_value=Response(b"complete", 8)):
         download_file("https://example.test/data", path)
     assert path.read_bytes() == b"complete"
 
 
 def test_failed_download_cleans_up(tmp_path):
-    with patch("src.data.base.urlopen", side_effect=TimeoutError("timed out")):
+    with patch("justin.data.base.urlopen", side_effect=TimeoutError("timed out")):
         with pytest.raises(TimeoutError):
             download_file("https://example.test/data", tmp_path / "data")
     assert list(tmp_path.iterdir()) == []
@@ -187,7 +187,7 @@ def test_failed_extraction_leaves_no_partial_csv(tmp_path):
     root.mkdir()
     with ZipFile(root / "source.zip", "w") as file:
         file.writestr("train.csv", "value\n1\n")
-    with patch("src.data.base.shutil.copyfileobj", side_effect=OSError("disk full")):
+    with patch("justin.data.base.shutil.copyfileobj", side_effect=OSError("disk full")):
         with pytest.raises(OSError, match="disk full"):
             download_csv_zip("unused", root, "train.csv")
     assert {p.name for p in root.iterdir()} == {"source.zip"}

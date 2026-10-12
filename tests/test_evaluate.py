@@ -1,18 +1,18 @@
 import pytest
 import torch
 
-from src.config import Config
-from src.data import HARDataset
-from src.model import SystemOne
-from src.training.evaluate import (
+from justin.config import Config
+from justin.data import HARDataset
+from justin.model import SystemOne
+from justin.training.evaluate import (
     evaluate_model,
     load_checkpoint,
     macro_f1,
     predictions,
     score,
 )
-from src.training.loader import BatchLoader
-from src.training.validation import validate
+from justin.training.loader import BatchLoader
+from justin.training.validation import validate
 
 
 def test_macro_f1_matches_hand_computation():

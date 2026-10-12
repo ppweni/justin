@@ -3,8 +3,8 @@ from collections import Counter
 import torch
 from torch.utils.data import RandomSampler
 
-from src.data import ECGDataset, HARDataset
-from src.training.loader import BatchLoader
+from justin.data import ECGDataset, HARDataset
+from justin.training.loader import BatchLoader
 
 
 def test_fixed_catalog_batches_include_final_partial_batch(har_root):

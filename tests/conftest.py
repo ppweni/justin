@@ -11,9 +11,9 @@ from datasets import Dataset as ArrowDataset
 from datasets import disable_progress_bars
 from transformers import BertConfig, BertModel, BertTokenizer
 
-from src.data import ECGDataset, HARDataset, SleepDataset
-from src.model import Chronos2Encoder, SystemOne, TextEncoder
-from src.model.chronos2 import Chronos2
+from justin.data import ECGDataset, HARDataset, SleepDataset
+from justin.model import Chronos2Encoder, SystemOne, TextEncoder
+from justin.model.chronos2 import Chronos2
 
 
 @pytest.fixture(autouse=True)

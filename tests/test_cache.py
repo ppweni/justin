@@ -3,21 +3,21 @@ import json
 import pytest
 import torch
 
-from src.cache import (
+from justin.cache import (
     CachedBatchLoader,
     CachedDataset,
     FeatureCache,
     cached_collate,
     series_key,
 )
-from src.cache.dataset import _class_key, effective_number_weights
-from src.config import Config
-from src.data import ECGDataset, HARDataset
-from src.model import SystemOne
-from src.training.batch import model_logits, prepare_batch
-from src.training.loss import compute_loss
-from src.training.run import build_cache, run
-from src.training.validation import validate
+from justin.cache.dataset import _class_key, effective_number_weights
+from justin.config import Config
+from justin.data import ECGDataset, HARDataset
+from justin.model import SystemOne
+from justin.training.batch import model_logits, prepare_batch
+from justin.training.loss import compute_loss
+from justin.training.run import build_cache, run
+from justin.training.validation import validate
 
 
 def _model(make_chronos2_encoder, text_encoder, **kwargs):
@@ -407,7 +407,7 @@ def test_build_cache_requires_cache_config(har_root):
 def test_build_cache_rejects_empty_split(
     har_root, make_chronos2_encoder, text_encoder, tmp_path, monkeypatch
 ):
-    from src.data import DATASETS
+    from justin.data import DATASETS
 
     model = _model(make_chronos2_encoder, text_encoder)
     monkeypatch.setattr(SystemOne, "from_pretrained", lambda **kwargs: model)

@@ -3,13 +3,13 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from src.model import Chronos2Encoder, TextEncoder
+from justin.model import Chronos2Encoder, TextEncoder
 
 
 def test_chronos2_factory(make_chronos2_encoder):
     encoder = make_chronos2_encoder()
     with patch(
-        "src.model.encoders.Chronos2.from_pretrained", return_value=encoder.backbone
+        "justin.model.encoders.Chronos2.from_pretrained", return_value=encoder.backbone
     ) as load:
         result = Chronos2Encoder.from_pretrained()
         Chronos2Encoder.from_pretrained(revision="abc")
@@ -20,10 +20,10 @@ def test_chronos2_factory(make_chronos2_encoder):
 def test_text_factory(text_encoder):
     with (
         patch(
-            "src.model.encoders.AutoModel.from_pretrained", return_value=text_encoder.backbone
+            "justin.model.encoders.AutoModel.from_pretrained", return_value=text_encoder.backbone
         ) as load,
         patch(
-            "src.model.encoders.AutoTokenizer.from_pretrained", return_value=text_encoder.tokenizer
+            "justin.model.encoders.AutoTokenizer.from_pretrained", return_value=text_encoder.tokenizer
         ) as tokenize,
     ):
         encoder = TextEncoder.from_pretrained()
@@ -85,7 +85,7 @@ def test_padding_mask_shape_mismatch_rejected(chronos2_encoder):
 def test_no_gradients_through_backbone(chronos2_encoder, text_encoder):
     # Run a full forward through SystemOne so there IS a grad path (via fusion),
     # then check that the frozen backbone never accumulated gradients.
-    from src.model import SystemOne
+    from justin.model import SystemOne
 
     model = SystemOne(chronos2_encoder, text_encoder, num_classes=2, hidden_dim=16)
     model.train()

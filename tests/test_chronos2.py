@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from src.model import Chronos2Encoder, SeriesEncoder, SystemOne
-from src.model.chronos2 import Chronos2
+from justin.model import Chronos2Encoder, SeriesEncoder, SystemOne
+from justin.model.chronos2 import Chronos2
 
 
 def test_encoder_implements_the_abc(make_chronos2_encoder):

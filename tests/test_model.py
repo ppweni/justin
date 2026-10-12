@@ -4,8 +4,8 @@ import pytest
 import torch
 from torch.nn import functional as F
 
-from src.model import SystemOne
-from src.model.fusion import CrossAttentionFusion
+from justin.model import SystemOne
+from justin.model.fusion import CrossAttentionFusion
 
 
 @pytest.mark.parametrize("with_text", [True, False])
@@ -13,10 +13,10 @@ def test_pretrained_factory(make_chronos2_encoder, text_encoder, with_text):
     encoder = make_chronos2_encoder()
     with (
         patch(
-            "src.model.encoders.Chronos2Encoder.from_pretrained", return_value=encoder
+            "justin.model.encoders.Chronos2Encoder.from_pretrained", return_value=encoder
         ) as series_load,
         patch(
-            "src.model.model.TextEncoder.from_pretrained", return_value=text_encoder
+            "justin.model.model.TextEncoder.from_pretrained", return_value=text_encoder
         ) as text_load,
     ):
         model = SystemOne.from_pretrained(with_text=with_text, num_classes=3)

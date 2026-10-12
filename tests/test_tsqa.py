@@ -4,7 +4,7 @@ import pytest
 import torch
 from datasets import Dataset as ArrowDataset
 
-from src.data import TSQADataset
+from justin.data import TSQADataset
 
 
 def test_tsqa_choices_are_separate_from_question(tsqa_root):
@@ -33,7 +33,7 @@ def test_same_signal_different_questions_stay_in_one_split(tmp_path, tsqa_rows):
 
 def test_tsqa_download_is_cached(tmp_path, tsqa_rows):
     with patch(
-        "src.data.tsqa.load_dataset", return_value=ArrowDataset.from_list(tsqa_rows)
+        "justin.data.tsqa.load_dataset", return_value=ArrowDataset.from_list(tsqa_rows)
     ) as load:
         dataset = TSQADataset(tmp_path, download=True)
         dataset.download()
@@ -45,7 +45,7 @@ def test_tsqa_download_is_cached(tmp_path, tsqa_rows):
 
 
 def test_failed_tsqa_save_does_not_poison_cache(tmp_path):
-    with patch("src.data.tsqa.load_dataset") as load:
+    with patch("justin.data.tsqa.load_dataset") as load:
         load.return_value.save_to_disk.side_effect = OSError("disk full")
         with pytest.raises(OSError, match="disk full"):
             TSQADataset(tmp_path, download=True)

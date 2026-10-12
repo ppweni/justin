@@ -5,9 +5,9 @@ from unittest.mock import patch
 import pytest
 import torch
 
-from src.config import Config
-from src.model import SystemOne
-from src.pretrained import answer, load_pretrained
+from justin.config import Config
+from justin.model import SystemOne
+from justin.pretrained import answer, load_pretrained
 
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def test_load_pretrained_from_a_local_file(tmp_path, small_model):
     config = Config(series_encoder="chronos", hidden_dim=16, device="cpu")
     torch.save({"model": small_model.state_dict(), "config": asdict(config)}, path)
     with patch(
-        "src.training.evaluate.build_model",
+        "justin.training.evaluate.build_model",
         return_value=SystemOne(
             small_model.series_encoder, small_model.text_encoder, num_classes=3, hidden_dim=16
         ),
@@ -45,7 +45,7 @@ def test_load_pretrained_downloads_from_the_hub_when_given_a_repo(tmp_path):
         load_pretrained("owner/justin-chronos")
     with (
         patch("huggingface_hub.hf_hub_download", return_value=str(tmp_path / "m.pt")) as download,
-        patch("src.pretrained.load_checkpoint", return_value=(SimpleNamespace(), "config")) as load,
+        patch("justin.pretrained.load_checkpoint", return_value=(SimpleNamespace(), "config")) as load,
     ):
         result = load_pretrained("owner/justin-chronos", filename="m.pt", device="cpu")
     download.assert_called_once_with(

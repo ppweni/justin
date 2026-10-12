@@ -2,8 +2,8 @@ import pytest
 import torch
 from torch import nn
 
-from src.model import SystemOne
-from src.model.lora import LoRALinear, inject_lora
+from justin.model import SystemOne
+from justin.model.lora import LoRALinear, inject_lora
 
 
 def test_lora_linear_is_identity_at_init_and_trainable():

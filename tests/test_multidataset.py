@@ -10,18 +10,18 @@ import torch
 import yaml
 from click.testing import CliRunner
 
-from src import Config
-from src.__main__ import main
-from src.data import DATASETS
-from src.model import SystemOne
-from src.training.calibration import fit_temperatures
-from src.training.loader import BatchLoader
-from src.training.mixing import BalancedBatches
-from src.training.optimizer import build_optimizer
-from src.training.run import run
-from src.training.step import train_step
-from src.training.train import train
-from src.training.validation import validate_datasets
+from justin import Config
+from justin.__main__ import main
+from justin.data import DATASETS
+from justin.model import SystemOne
+from justin.training.calibration import fit_temperatures
+from justin.training.loader import BatchLoader
+from justin.training.mixing import BalancedBatches
+from justin.training.optimizer import build_optimizer
+from justin.training.run import run
+from justin.training.step import train_step
+from justin.training.train import train
+from justin.training.validation import validate_datasets
 
 CHANNELS = {"har": 3, "sleep": 1, "tsqa": 1, "ecg": 12}
 
@@ -102,7 +102,7 @@ def test_validation_summary_is_macro_averaged(model, monkeypatch):
         "large": {"loss": 3.0, "accuracy": 0.0, "balanced_accuracy": 0.1},
     }
     monkeypatch.setattr(
-        "src.training.validation.validate",
+        "justin.training.validation.validate",
         lambda model, batches: metrics["small" if len(batches) == 1 else "large"],
     )
     history = train(model, [batch], {"small": [batch], "large": [batch] * 3}, Config(epochs=1))
@@ -163,14 +163,14 @@ def test_all_four_datasets_train_calibrate_and_reload_together(
     )
     model = SystemOne(make_chronos2_encoder(), text_encoder, hidden_dim=16)
     steps, splits = [], []
-    step = import_module("src.training.train").train_step
+    step = import_module("justin.training.train").train_step
 
     def record_step(model, batch, optimizer):
         steps.append(batch["dataset"])
         assert batch["series"].shape[1] == CHANNELS[batch["dataset"]]
         return step(model, batch, optimizer)
 
-    monkeypatch.setattr(import_module("src.training.train"), "train_step", record_step)
+    monkeypatch.setattr(import_module("justin.training.train"), "train_step", record_step)
     for name, dataset_class in list(DATASETS.items()):
 
         def load(root, *, split, download, cls=dataset_class, dataset=name):
@@ -181,7 +181,7 @@ def test_all_four_datasets_train_calibrate_and_reload_together(
 
     with (
         patch.object(SystemOne, "from_pretrained", return_value=model) as factory,
-        patch("src.training.run.fit_temperatures", wraps=fit_temperatures) as calibrate,
+        patch("justin.training.run.fit_temperatures", wraps=fit_temperatures) as calibrate,
     ):
         path = run(config)
     # from_pretrained is called without channels kwarg

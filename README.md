@@ -52,12 +52,12 @@ Read the comparison with care:
 ## Use a trained model
 
 ```sh
-uv sync
+pip install "justin @ git+https://github.com/ppweni/justin@v0.1.0"   # or: uv add / uv pip install
 ```
 
 ```python
 import torch
-from src.pretrained import answer, load_pretrained
+from justin.pretrained import answer, load_pretrained
 
 # a local file, or a Hugging Face repo id plus the filename
 model, config = load_pretrained(
@@ -72,18 +72,18 @@ answer(model, series, "Is the signal rising?")                                  
 `SystemOne.forward(series [B,C,T], questions, options=..., head="choice" | "noul" | "score")` returns raw logits.
 Choice can only select one of the supplied option strings; include relevant metadata in the question text.
 The first load also downloads the frozen Chronos-2 and MiniLM weights, at the revisions recorded in the file.
-`model.temperatures` holds the fitted calibration temperatures per head (see `src.training.calibration.probabilities`).
+`model.temperatures` holds the fitted calibration temperatures per head (see `justin.training.calibration.probabilities`).
 
 The file is safetensors with the model config, revisions and temperatures in its metadata (also written to a `.json`
 beside it). A full training checkpoint (`.pt`) loads too. To publish a trained checkpoint:
 
 ```sh
-uv run python -m src export runs/model.pt justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors
+uv run python -m justin export runs/model.pt justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors
 ```
 
 Export checks that every frozen tensor in the checkpoint equals the pinned backbone and fails otherwise, so a wrong
 pin is caught before release. To move to newer backbones, change `revision` on `Chronos2Encoder` / `TextEncoder`
-(`src/model/encoders.py`) and retrain; old files keep loading the revisions they recorded.
+(`justin/model/encoders.py`) and retrain; old files keep loading the revisions they recorded.
 
 ## How a question is answered
 
@@ -108,9 +108,9 @@ Score:  z -> Linear -> K level logits
 
 | `series_encoder` | model | params | token layout per channel |
 |---|---|---|---|
-| `chronos` | amazon/chronos-2 (Apache-2.0), encoder re-implemented in `src/model/chronos2.py` | 116M | N patches + `[REG]` + one future-patch token |
+| `chronos` | amazon/chronos-2 (Apache-2.0), encoder re-implemented in `justin/model/chronos2.py` | 116M | N patches + `[REG]` + one future-patch token |
 
-An encoder implements the `SeriesEncoder` base class (`src/model/encoders.py`): `forward`, `encode_prefix` /
+An encoder implements the `SeriesEncoder` base class (`justin/model/encoders.py`): `forward`, `encode_prefix` /
 `encode_suffix` (split at a block boundary so the frozen prefix can be cached), `num_blocks`, `lora_targets`.
 Register it in `SERIES_ENCODERS` to make it selectable.
 
@@ -130,14 +130,14 @@ Datasets are downloaded from their original sources; check each source's terms b
 ## Train and evaluate
 
 ```sh
-uv run python -m src download CONFIG.yaml     # train + validation files for the configured datasets
-uv run python -m src cache CONFIG.yaml        # optional: build the feature cache
-uv run python -m src train CONFIG.yaml        # train, calibrate, save a checkpoint
-uv run python -m src evaluate CKPT... --split test [--dataset har] [--device cuda] [--download] [--output out.json]
-uv run pytest -q && uv run ruff check src tests
+uv run python -m justin download CONFIG.yaml     # train + validation files for the configured datasets
+uv run python -m justin cache CONFIG.yaml        # optional: build the feature cache
+uv run python -m justin train CONFIG.yaml        # train, calibrate, save a checkpoint
+uv run python -m justin evaluate CKPT... --split test [--dataset har] [--device cuda] [--download] [--output out.json]
+uv run pytest -q && uv run ruff check justin tests
 ```
 
-Every YAML key of `CONFIG.yaml` is a field of `Config` in `src/config.py` (datasets, `series_encoder`,
+Every YAML key of `CONFIG.yaml` is a field of `Config` in `justin/config.py` (datasets, `series_encoder`,
 `series_lora_layers`, `signal_skip`, `hidden_dim`, `epochs`, `cache`, `output`, ...). The v0.1.0 setup is
 `signal_skip: true`, `series_lora_layers: 4`, `lora_rank: 8`, `lora_learning_rate: 3e-5`, all four datasets, with a
 `cache` directory (about 20 GB of RAM). Checkpoints are selected by pooled validation balanced accuracy, and the
@@ -146,11 +146,11 @@ test split is for finished models only.
 ## Repository map
 
 ```text
-src/model/        encoders.py (SeriesEncoder, Chronos-2, MiniLM), chronos2.py, fusion.py, lora.py, model.py (SystemOne)
-src/pretrained.py load_pretrained / answer;  src/export.py export to safetensors
-src/cache/        feature cache, cached datasets and collation
-src/training/     run.py, train.py, evaluate.py, loss.py, optimizer.py, ...
-src/data/         the four dataset adapters
+justin/model/        encoders.py (SeriesEncoder, Chronos-2, MiniLM), chronos2.py, fusion.py, lora.py, model.py (SystemOne)
+justin/pretrained.py load_pretrained / answer;  justin/export.py export to safetensors
+justin/cache/        feature cache, cached datasets and collation
+justin/training/     run.py, train.py, evaluate.py, loss.py, optimizer.py, ...
+justin/data/         the four dataset adapters
 tests/            offline tests with tiny random encoders (no network)
 ```
 

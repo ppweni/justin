@@ -5,8 +5,8 @@ import pytest
 import torch
 import wfdb
 
-from src.data import ECGDataset
-from src.model import SystemOne
+from justin.data import ECGDataset
+from justin.model import SystemOne
 
 
 @pytest.mark.parametrize(
@@ -76,7 +76,7 @@ def test_ecg_rejects_wrong_sampling_rate_or_leads(ecg_root, change):
     # Waveforms are validated when the dataset preloads them at construction.
     path = ecg_root / "ecg" / "ptbxl" / "records100" / "00000" / "00001_lr"
     signal, metadata = wfdb.rdsamp(str(path))
-    with patch("src.data.ecg.wfdb.rdsamp", return_value=(signal, {**metadata, **change})):
+    with patch("justin.data.ecg.wfdb.rdsamp", return_value=(signal, {**metadata, **change})):
         with pytest.raises(ValueError, match="100 Hz, 12-lead"):
             ECGDataset(ecg_root)
 

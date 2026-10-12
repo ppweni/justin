@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from src.model.fusion import CrossAttentionFusion, OptionAttention
+from justin.model.fusion import CrossAttentionFusion, OptionAttention
 
 
 def _fusion(**kwargs):

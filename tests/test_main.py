@@ -7,11 +7,11 @@ import torch
 import yaml
 from click.testing import CliRunner
 
-from src import Config
-from src.__main__ import _load_config, main
-from src.data import DATASETS
-from src.model import SystemOne
-from src.training.run import run
+from justin import Config
+from justin.__main__ import _load_config, main
+from justin.data import DATASETS
+from justin.model import SystemOne
+from justin.training.run import run
 
 
 @pytest.fixture
@@ -29,16 +29,16 @@ def run_config(har_root, tmp_path):
 
 
 def test_package_exports_config():
-    from src.config import Config as ConfigClass
+    from justin.config import Config as ConfigClass
 
     assert Config is ConfigClass
 
 
 def test_module_help(monkeypatch, capsys):
-    monkeypatch.setattr(sys, "argv", ["src", "--help"])
-    monkeypatch.delitem(sys.modules, "src.__main__")
+    monkeypatch.setattr(sys, "argv", ["justin", "--help"])
+    monkeypatch.delitem(sys.modules, "justin.__main__")
     with pytest.raises(SystemExit) as error:
-        runpy.run_module("src", run_name="__main__")
+        runpy.run_module("justin", run_name="__main__")
     assert error.value.code == 0
     output = capsys.readouterr().out
     assert "download" in output and "train" in output and "cache" in output
@@ -60,7 +60,7 @@ def test_main_passes_yaml_config(run_config, tmp_path, monkeypatch):
         calls.append(config)
         return config.output
 
-    monkeypatch.setattr("src.training.run.run", fake_run)
+    monkeypatch.setattr("justin.training.run.run", fake_run)
     result = CliRunner().invoke(main, ["train", str(path)])
     assert result.exit_code == 0, result.output
     assert calls == [run_config]
@@ -79,7 +79,7 @@ def test_cache_command_passes_yaml_config(tmp_path, monkeypatch, har_root):
     path.write_text(yaml.safe_dump(asdict(config)))
     calls = []
 
-    monkeypatch.setattr("src.training.run.build_cache", calls.append)
+    monkeypatch.setattr("justin.training.run.build_cache", calls.append)
     result = CliRunner().invoke(main, ["cache", str(path)])
     assert result.exit_code == 0, result.output
     assert calls == [config]
@@ -100,7 +100,7 @@ def test_cache_command_builds_without_training(
 ):
     model = SystemOne(make_chronos2_encoder(), text_encoder, hidden_dim=16)
     monkeypatch.setattr(SystemOne, "from_pretrained", lambda **kwargs: model)
-    monkeypatch.setattr("src.training.run.run", lambda *a, **k: pytest.fail("cache must not train"))
+    monkeypatch.setattr("justin.training.run.run", lambda *a, **k: pytest.fail("cache must not train"))
     cache_dir = tmp_path / "features"
     config = Config(
         dataset="har",
@@ -132,7 +132,7 @@ def test_download_command_uses_dataset_only(tmp_path, monkeypatch, dataset):
 
     monkeypatch.setitem(DATASETS, dataset, download_dataset)
     monkeypatch.setattr(SystemOne, "from_pretrained", unexpected_training)
-    monkeypatch.setattr("src.training.run.run", unexpected_training)
+    monkeypatch.setattr("justin.training.run.run", unexpected_training)
     result = CliRunner().invoke(main, ["download", str(path)])
     assert result.exit_code == 0, result.output
     assert calls == [(str(tmp_path), "train", True), (str(tmp_path), "validation", True)]
