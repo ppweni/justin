@@ -135,6 +135,10 @@ src/data/         the four dataset adapters
 tests/            offline tests with tiny random encoders (no network)
 ```
 
+## License
+
+The code is licensed under Apache-2.0 (see `LICENSE`).
+
 ## Third-party models
 
 Chronos-2 (`amazon/chronos-2`, Apache-2.0) and `sentence-transformers/all-MiniLM-L6-v2` (Apache-2.0) are downloaded
