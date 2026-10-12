@@ -27,7 +27,7 @@ One training run, no seeds; epoch-to-epoch noise on validation is about 1-2 poin
 | ECG-QA | 41,093 | 42.3 | 37.6 | 52.4 | 40.3 / 46.3 |
 | TSQA | 4,793 | 99.8 | 99.8 | 99.8 | 97.5 / 97.5 |
 
-\* OpenTSLM's best variants as I recorded them from its paper. **They have not been re-checked against the paper.**
+\* OpenTSLM's best variant per task, from Langer et al., [*OpenTSLM: Time-Series Language Models for Reasoning over Multivariate Medical Text- and Time-Series Data*](https://arxiv.org/abs/2510.02410) (arXiv:2510.02410, 2025). The HAR and sleep F1 values (65.4, 69.9) match the paper's abstract; the other figures are as I recorded them from its tables and have **not been re-checked**.
 
 Read the comparison with care:
 
@@ -140,3 +140,11 @@ tests/            offline tests with tiny random encoders (no network)
 Chronos-2 (`amazon/chronos-2`, Apache-2.0) and `sentence-transformers/all-MiniLM-L6-v2` (Apache-2.0) are downloaded
 from Hugging Face and are not redistributed in this repository. A published checkpoint contains their weights
 alongside the trained parts.
+
+## References
+
+- P. Langer, T. Kaar, M. Rosenblattl, M. A. Xu, W. Chow, M. Maritsch, R. Jakob, N. Wang, J. Liu, A. Verma, B. Han,
+  D. S. Kim, H. Chubb, S. Ceresnak, A. Zahedivash, A. T. S. Sandhu, F. Rodriguez, D. McDuff, E. Fleisch, O. Aalami,
+  F. Barata, P. Schmiedmayer. *OpenTSLM: Time-Series Language Models for Reasoning over Multivariate Medical Text- and
+  Time-Series Data.* arXiv:2510.02410, 2025. <https://arxiv.org/abs/2510.02410>. Source of the HAR-CoT, Sleep-CoT and
+  ECG-QA-CoT datasets and of the comparison figures above.
