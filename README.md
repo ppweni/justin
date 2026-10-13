@@ -2,7 +2,17 @@
 
 ![Justin: a time series, a question and answer options go in, the answer comes out](assets/banner.jpg)
 
-Time-series question answering with direct Choice, Noul (yes/no) and Score outputs. No generated text.
+Fast, direct answers to questions about time series.
+
+Many decisions rest on time series: machine sensors, ECGs, telemetry. Language models have taken over this space, but
+they generate text, and generated text can hallucinate: a fluent explanation that is wrong, or an answer that is not
+one of the options you can act on. Fully automated systems built on them are still not mature enough to trust.
+
+Justin is a "System 1" for time series: it does not reason in words, it answers at a glance. Given a signal, a
+question and the answers you allow, it returns one of them (**Choice**), a yes/no (**Noul**) or a level (**Score**),
+together with calibrated probabilities. It cannot produce an answer outside the options, it is cheap to run, and the
+probabilities show when it is unsure, so a pipeline can pass those cases to a person or a slower reasoning system.
+It can still be wrong; the results below show how often.
 
 A frozen time-series foundation model (**Chronos-2**) and a frozen MiniLM text encoder feed a small trainable
 cross-attention head. LoRA adapters can unfreeze the top blocks of the series encoder.
