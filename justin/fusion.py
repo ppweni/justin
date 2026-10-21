@@ -150,3 +150,83 @@ class OptionAttention(nn.Module):
             queries, kv, kv, key_padding_mask=~signal_mask, need_weights=False
         )
         return self.scorer(self.norm(queries + routed)).squeeze(-1)
+
+
+class ChannelHead(nn.Module):
+    """Per-channel tokens that channels and questions compare, instead of a pool over all patches.
+
+    Each series becomes one token: the masked mean of its patch states plus an embedding of
+    its name and a projection of its numbers (how far it deviates, when). Self-attention lets
+    channels see each other, so a ranking ("which deviated most?") or a pairing ("did A change
+    before B?") is a comparison between tokens. The question's tokens then read the channel
+    tokens, giving a summary vector for the fusion, and the tokens are returned for
+    option-specific routing (an option that names a service reads that service's channels).
+    """
+
+    def __init__(
+        self,
+        signal_dim: int,
+        text_dim: int,
+        hidden_dim: int,
+        *,
+        n_features: int = 0,
+        names: bool = True,
+        heads: int = 8,
+        layers: int = 1,
+        dropout: float = 0.0,
+    ):
+        super().__init__()
+        if not (names or n_features):
+            raise ValueError("a channel head needs channel names or channel features")
+        self.pool = nn.Sequential(nn.LayerNorm(signal_dim), nn.Linear(signal_dim, hidden_dim))
+        self.names = nn.Linear(text_dim, hidden_dim) if names else None
+        self.features = (
+            nn.Sequential(nn.Linear(n_features, 64), nn.GELU(), nn.Linear(64, hidden_dim))
+            if n_features
+            else None
+        )
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                hidden_dim, heads, 4 * hidden_dim, dropout,
+                activation="gelu", batch_first=True, norm_first=True,
+            ),
+            layers,
+            enable_nested_tensor=False,
+        )  # fmt: skip
+        self.query_projection = nn.Linear(text_dim, hidden_dim)
+        self.read = _FusionBlock(hidden_dim, heads, dropout)
+        self.norm = nn.LayerNorm(hidden_dim)
+
+    def forward(
+        self,
+        signal: Tensor,
+        signal_mask: Tensor,
+        channels: int,
+        question: Tensor,
+        question_mask: Tensor,
+        names: Tensor | None = None,
+        features: Tensor | None = None,
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        """-> (summary [B,H], channel tokens [B,C,H], channel_valid [B,C] bool)."""
+        batch, tokens, dim = signal.shape
+        if tokens % channels:
+            raise ValueError("signal tokens must divide evenly among the channels")
+        patches = signal.view(batch, channels, tokens // channels, dim)
+        valid_patches = signal_mask.view(batch, channels, tokens // channels, 1).to(signal.dtype)
+        mean = (patches * valid_patches).sum(2) / valid_patches.sum(2).clamp_min(1.0)
+        channel_valid = signal_mask.view(batch, channels, -1).any(dim=2)
+        x = self.pool(mean)
+        if self.names is not None:
+            if names is None:
+                raise ValueError("this channel head needs channel names")
+            x = x + self.names(names.to(x))
+        if self.features is not None:
+            if features is None:
+                raise ValueError("this channel head needs channel features")
+            x = x + self.features(features.to(x))
+        x = self.encoder(x, src_key_padding_mask=~channel_valid)
+        queries = self.query_projection(question.to(x))
+        queries = self.read(queries, x, ~channel_valid)
+        weights = question_mask.unsqueeze(-1).to(queries.dtype)
+        summary = (queries * weights).sum(1) / weights.sum(1).clamp_min(1.0)
+        return self.norm(summary), x, channel_valid

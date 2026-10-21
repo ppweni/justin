@@ -1,19 +1,9 @@
-"""Justin: time-series question answering on a frozen Chronos-2 encoder."""
+"""Justin (inference): a time series and questions in, answers out.
 
-from typing import TYPE_CHECKING
+Timestral or Chronos-2 reads the signal, MiniLM the question and the answer options, and a small trained
+cross-attention head picks an answer; a location head points at where something happens.
+"""
 
-from .config import Config
+from .pretrained import Answer, Found, Justin, Location, Question, load_location, load_pretrained
 
-if TYPE_CHECKING:
-    from .pretrained import Justin
-
-__all__ = ["Config", "Justin"]
-
-
-def __getattr__(name: str):
-    # Loaded on first use so `import justin` and the CLI do not import torch/transformers.
-    if name == "Justin":
-        from .pretrained import Justin
-
-        return Justin
-    raise AttributeError(f"module 'justin' has no attribute {name!r}")
+__all__ = ["Answer", "Found", "Justin", "Location", "Question", "load_location", "load_pretrained"]

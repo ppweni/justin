@@ -1,191 +1,95 @@
-# Justin
+# justin
 
-![Justin: a time series, a question and answer options go in, the answer comes out](assets/banner.jpg)
+Fast, direct answers to questions about time series: inference for the published Justin models.
 
-Fast, direct answers to questions about time series.
+Justin is a "System 1" for time series. You give it a multichannel signal, a question and the answers you
+allow. It returns one of them (**Choice**), a yes/no (**Noul**) or a level (**Score**), with calibrated
+probabilities. It cannot answer outside the options you supply. A **location head** points at where something
+happens: a channel and a 32-step patch, or "not present".
 
-Many decisions rest on time series: machine sensors, ECGs, telemetry. Language models have taken over this space, but
-they generate text, and generated text can hallucinate: a fluent explanation that is wrong, or an answer that is not
-one of the options you can act on. Fully automated systems built on them are still not mature enough to trust.
+- **Series encoder:** Timestral (any of the four sizes, frozen; LoRA adapters and question conditioning
+  (FiLM) as trained) or Chronos-2 (frozen, LoRA as trained).
+- **Text encoder:** MiniLM, for the question, the options and the channel names.
+- **Fusion and heads:** cross-attention fusion with the Choice, Noul and Score heads.
 
-Justin is a "System 1" for time series: it does not reason in words, it answers at a glance. Given a signal, a
-question and the answers you allow, it returns one of them (**Choice**), a yes/no (**Noul**) or a level (**Score**),
-together with calibrated probabilities. It cannot produce an answer outside the options, it is cheap to run, and the
-probabilities show when it is unsure, so a pipeline can pass those cases to a person or a slower reasoning system.
-It can still be wrong; the results below show how often.
+This package is inference only. Training lives in the training repository. A Rust port with the same models is
+[`justin_rs`](https://github.com/ppweni/justin_rs).
 
-A frozen time-series foundation model (**Chronos-2**) and a frozen MiniLM text encoder feed a small trainable
-cross-attention head. LoRA adapters can unfreeze the top blocks of the series encoder.
-
-## Versions
-
-One GitHub repo (`justin`) holds the code for every version. Each combination of frozen backbones gets its own
-Hugging Face model repo, `justin-<series>-<text>` (for example `justin-chronos-minilm`), so either the time-series
-encoder or the text encoder can change later. Each release is a git tag `vX.Y.Z` with a file named
-`justin-vX.Y.Z-<series>-<text>-<setup>.safetensors`. A new backbone means a new `SeriesEncoder` (see below) or text
-encoder, and a new HF repo. All repos are listed in the
-[Justin collection](https://huggingface.co/collections/ppweni/justin).
-
-| version | series backbone | HF repo | checkpoint | setup |
-|---|---|---|---|---|
-| `v0.1.0` | Chronos-2 (`amazon/chronos-2`, Apache-2.0) | `justin-chronos-minilm` | `justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors` (33 MB) | text encoder MiniLM, `signal_skip`, LoRA (rank 8) on the top 4 of 12 Chronos-2 blocks, trained jointly on HAR, sleep, TSQA and ECG |
-
-A published file holds only what this project trained (fusion, heads, `signal_skip`, LoRA adapters), not the
-frozen backbones. It records the exact Hub revisions of those backbones, and loading downloads exactly those:
-
-| frozen backbone | repo | revision |
-|---|---|---|
-| Chronos-2 | `amazon/chronos-2` | `29ec3766d36d6f73f0696f85560a422f50e8498c` |
-| MiniLM | `sentence-transformers/all-MiniLM-L6-v2` | `1110a243fdf4706b3f48f1d95db1a4f5529b4d41` |
-
-### v0.1.0 results
-
-Test split, one checkpoint (the best pooled validation epoch), balanced accuracy / macro-F1 / accuracy in %.
-One training run, no seeds; epoch-to-epoch noise on validation is about 1-2 points.
-
-| task | n (test) | bal-acc | macro-F1 | acc | OpenTSLM F1 / acc* |
-|---|---|---|---|---|---|
-| HAR | 8,222 | 66.8 | 67.1 | 69.9 | 65.4 / 71.5 |
-| Sleep | 2,765 | 72.8 | 68.0 | 92.3 | 69.9 / 81.1 |
-| ECG-QA | 41,093 | 42.3 | 37.6 | 52.4 | 40.3 / 46.3 |
-| TSQA | 4,793 | 99.8 | 99.8 | 99.8 | 97.5 / 97.5 |
-
-\* OpenTSLM's best variant per task, from Langer et al., [*OpenTSLM: Time-Series Language Models for Reasoning over Multivariate Medical Text- and Time-Series Data*](https://arxiv.org/abs/2510.02410) (arXiv:2510.02410, 2025). The HAR and sleep F1 values (65.4, 69.9) match the paper's abstract; the other figures are as I recorded them from its tables and have **not been re-checked**.
-
-Read the comparison with care:
-
-- OpenTSLM generates a rationale before answering; Justin picks among supplied options.
-- Only **HAR** and **ECG** use OpenTSLM's original train / validation / test files. **Sleep** (split by subject) and
-  **TSQA** (split by signal) use splits defined in this repo, so those rows are not like-for-like. The sleep test
-  split is very imbalanced (92% accuracy, 73% balanced accuracy).
-- Accuracy and macro-F1 disagree on sleep and ECG because of class imbalance. Overall it is roughly on par with
-  OpenTSLM, ahead on TSQA, behind on ECG macro-F1.
-- The 4-block lead over a 2-block LoRA run is within validation noise; training overfits after epoch 2.
-
-## Use a trained model
+## Install
 
 ```sh
-pip install "justin @ git+https://github.com/ppweni/justin@v0.1.0"   # or: uv add / uv pip install
+pip install "justin @ git+https://github.com/ppweni/justin@v0.2.0"
 ```
+
+## Use
 
 ```python
 import numpy as np
-from justin import Justin
+from justin import Justin, Location, Question
 
+repo = "ppweni/justin-timestral-minilm"
+name = "justin-v0.2.0-timestral5m-minilm-film8-lora8"
 model = Justin.from_pretrained(
-    "ppweni/justin-chronos-minilm",
-    filename="justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors",
-    revision="v0.1.0",
+    repo, filename=f"{name}.safetensors", revision="v0.2.0",
+    location=repo, location_filename=f"{name}-location.safetensors", location_revision="v0.2.0",
 )
 
-series = np.random.randn(3, 128)  # [channels, time]; a [time] vector is one channel
-options = ["walking", "sitting", "lying"]
-model.answer(series, "What activity is shown?", options)          # -> one of the options
-model.probabilities(series, "What activity is shown?", options)   # -> {"walking": 0.002, "sitting": 0.861, ...} (random input)
-model.answer(series, "Is the signal rising?")                     # -> True / False
-model.probabilities(series, "Is the signal rising?")              # -> P(yes)
+series = np.random.randn(3, 240).cumsum(-1)  # [channels, time], raw values
+names = ["cartservice_cpu", "cartservice_mem", "frontend_latency-50"]
+
+model.answer(series, "Which service is the root cause?", ["cartservice", "frontend", "No service is faulty"], names, step=4.0)
+model.probabilities(series, "Is there an anomaly in this time window?", None, names, step=4.0)  # P(yes)
+model.locate(series, "Locate the onset of the spike in cartservice_cpu in this window.", names)
+
+# Several queries about one series (the Rust crate's `forward`):
+outputs = model.ask(series, [
+    Question("Is there an anomaly in this time window?"),           # yes/no
+    Question("Which service is the root cause?", ["cartservice", "frontend", "No service is faulty"]),
+    Question("How severe is it?", "score"),
+    Location("Locate the onset of the spike in cartservice_cpu in this window."),
+], names, step=4.0)
 ```
 
-`Justin.answer` takes one signal and one question. Choice can only select one of the supplied option strings; include
-relevant metadata in the question text. `probabilities` applies the temperatures fitted at the end of training.
-`model.system` is the underlying `SystemOne` module, whose `forward(series [B,C,T], questions, options=...,
-head="choice" | "noul" | "score")` returns raw logits for batches.
-The first load also downloads the frozen Chronos-2 and MiniLM weights, at the revisions recorded in the file.
-`model.temperatures` holds the fitted calibration temperatures per head.
+Arguments:
 
-The file is safetensors with the model config, revisions and temperatures in its metadata (also written to a `.json`
-beside it). A full training checkpoint (`.pt`) loads too. To publish a trained checkpoint:
+- **`series`:** `[channels, time]`, or `[time]` for one channel, of raw values.
+- **Channel names:** observability models need one name per channel, `<service>_<metric>`.
+- **`step`:** the seconds between points.
+- **`baseline`:** what counts as normal for the deviation features. The default is the first 30% of the
+  window; pass a `(start, end)` index range, or `None` if the series is already in baseline units.
+
+What comes back:
+
+- **Probabilities:** calibrated with the temperatures stored in the file.
+- **Locations:** the channel, the patch, and the sample range `start`/`end` the patch covers.
+
+Models load from a local file or a Hugging Face repo (`filename=`). Timestral and MiniLM are downloaded from
+their own repositories at the revisions the file records.
+
+## Models
+
+| repo | file | series encoder | trained on |
+|---|---|---|---|
+| [`ppweni/justin-timestral-minilm`](https://huggingface.co/ppweni/justin-timestral-minilm) | `justin-v0.2.0-timestral5m-minilm-film8-lora8.safetensors` (+ `-location`) | Timestral-5M | microservice incidents (RCAEval, Nezha, AIOps 2020) and time-series QA |
+| [`ppweni/justin-chronos-minilm`](https://huggingface.co/ppweni/justin-chronos-minilm) | `justin-v0.1.1-chronos2-minilm-lora4-skip.safetensors` | Chronos-2 | sleep, TSQA, ECG-QA |
+
+The location head needs a Timestral model: Chronos-2's [REG] and future-patch tokens are not positions in the
+series.
+
+## Tests
 
 ```sh
-uv run python -m justin export runs/model.pt justin-v0.1.0-chronos2-minilm-lora4-skip.safetensors
+uv run pytest -q
 ```
 
-Export checks that every frozen tensor in the checkpoint equals the pinned backbone and fails otherwise, so a wrong
-pin is caught before release. To move to newer backbones, change `revision` on `Chronos2Encoder` / `TextEncoder`
-(`justin/model/encoders.py`) and retrain; old files keep loading the revisions they recorded.
-
-## How a question is answered
-
-`B` = batch, `C` = channels, `T` = time samples, `M` = signal tokens, `N` = supplied answer options.
-
-```text
-series [B,C,T] --> SeriesEncoder --> signal tokens [B,M,d_ts] + mask
-                    Chronos-2: d=768, patch 16     (LoRA on the top blocks)
-question text --> MiniLM (frozen) --> question tokens [B,L,384]
-
-CrossAttentionFusion: question tokens attend over signal tokens (hidden_dim, `fusion_layers` blocks),
-                      masked mean over the question tokens, plus a residual from the mean question vector
-  + signal_skip: LayerNorm(masked mean of signal tokens) -> Linear, added to the fused vector
-  -> fused vector z [B,hidden_dim]
-
-Choice: options [N strings] -> MiniLM -> projection -> keys [N,hidden]; logits = z @ keys.T / sqrt(hidden)
-Noul:   z -> Linear -> one logit (yes if >= 0)
-Score:  z -> Linear -> K level logits
-```
-
-### Series encoders
-
-| `series_encoder` | model | params | token layout per channel |
-|---|---|---|---|
-| `chronos` | amazon/chronos-2 (Apache-2.0), encoder re-implemented in `justin/model/chronos2.py` | 116M | N patches + `[REG]` + one future-patch token |
-
-An encoder implements the `SeriesEncoder` base class (`justin/model/encoders.py`): `forward`, `encode_prefix` /
-`encode_suffix` (split at a block boundary so the frozen prefix can be cached), `num_blocks`, `lora_targets`.
-Register it in `SERIES_ENCODERS` to make it selectable.
-
-## Datasets
-
-All four come from the OpenTSLM CoT releases and are Choice/Noul tasks over supplied options.
-
-| name | signal | task | split |
-|---|---|---|---|
-| `har` | 3-channel accelerometer | 8 activities | original train / val / test files |
-| `sleep` | 1-channel EEG epoch | 5 sleep stages | own split by subject (seeded 80/10/10) |
-| `tsqa` | 1-channel series | multiple-choice trend/pattern questions | own split by signal identity |
-| `ecg` | 12-lead PTB-XL | ECG-QA (templated questions, Noul for yes/no) | original train / val / test files |
-
-Datasets are downloaded from their original sources; check each source's terms before reuse.
-
-## Train and evaluate
-
-```sh
-uv run python -m justin download CONFIG.yaml     # train + validation files for the configured datasets
-uv run python -m justin cache CONFIG.yaml        # optional: build the feature cache
-uv run python -m justin train CONFIG.yaml        # train, calibrate, save a checkpoint
-uv run python -m justin evaluate CKPT... --split test [--dataset har] [--device cuda] [--download] [--output out.json]
-uv run pytest -q && uv run ruff check justin tests
-```
-
-Every YAML key of `CONFIG.yaml` is a field of `Config` in `justin/config.py` (datasets, `series_encoder`,
-`series_lora_layers`, `signal_skip`, `hidden_dim`, `epochs`, `cache`, `output`, `seed`, ...). The v0.1.0 setup is
-`signal_skip: true`, `series_lora_layers: 4`, `lora_rank: 8`, `lora_learning_rate: 3e-5`, all four datasets, with a
-`cache` directory (about 20 GB of RAM). Checkpoints are selected by pooled validation balanced accuracy, and the
-test split is for finished models only.
-
-## Repository map
-
-```text
-justin/model/        encoders.py (SeriesEncoder, Chronos-2, MiniLM), chronos2.py, fusion.py, lora.py, model.py (SystemOne)
-justin/pretrained.py Justin (from_pretrained / answer / probabilities);  justin/export.py export to safetensors
-justin/cache/        feature cache, cached datasets and collation
-justin/training/     run.py, train.py, evaluate.py, loss.py, optimizer.py, ...
-justin/data/         the four dataset adapters
-tests/            offline tests with tiny random encoders (no network)
-```
+The tests use tiny random models and need no network. `tests/test_parity.py` compares this package with
+the training package on the parity fixtures, which the training repository writes. Point `JUSTIN_FIXTURES` at
+them (default: `../justin_rs/tests/fixtures`); without fixtures it skips.
 
 ## License
 
-The code is licensed under Apache-2.0 (see `LICENSE`).
-
-## Third-party models
-
-Chronos-2 (`amazon/chronos-2`, Apache-2.0) and `sentence-transformers/all-MiniLM-L6-v2` (Apache-2.0) are downloaded
-from Hugging Face at pinned revisions and are not redistributed in this repository or in the published files.
-
-## References
-
-- P. Langer, T. Kaar, M. Rosenblattl, M. A. Xu, W. Chow, M. Maritsch, R. Jakob, N. Wang, J. Liu, A. Verma, B. Han,
-  D. S. Kim, H. Chubb, S. Ceresnak, A. Zahedivash, A. T. S. Sandhu, F. Rodriguez, D. McDuff, E. Fleisch, O. Aalami,
-  F. Barata, P. Schmiedmayer. *OpenTSLM: Time-Series Language Models for Reasoning over Multivariate Medical Text- and
-  Time-Series Data.* arXiv:2510.02410, 2025. <https://arxiv.org/abs/2510.02410>. Source of the HAR-CoT, Sleep-CoT and
-  ECG-QA-CoT datasets and of the comparison figures above.
+The code is Apache-2.0 (see `LICENSE`). `justin/timestral.py` is derived from Mistral AI's Timestral
+code (Apache-2.0); the Timestral weights are under Mistral's Modified MIT licence. `justin/chronos2.py`
+re-implements the Chronos-2 encoder (Amazon, Apache-2.0). MiniLM is Apache-2.0. No backbone weights are
+redistributed here: all are downloaded from their own repositories. Each published Justin model has its own
+license on its model card.
