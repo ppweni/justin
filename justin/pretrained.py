@@ -38,6 +38,7 @@ def build_system(config: dict, revisions: dict[str, str] | None = None) -> Syste
         hidden_dim=config["hidden_dim"],
         fusion_layers=config.get("fusion_layers", 1),
         option_attention=config.get("option_attention", False),
+        noul_attention=config.get("noul_attention", False),
         signal_skip=config.get("signal_skip", False),
         channel_names=config.get("channel_names", False),
         channel_features=config.get("channel_features", 0),

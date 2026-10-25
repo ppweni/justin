@@ -143,8 +143,10 @@ class OptionAttention(nn.Module):
         nn.init.zeros_(self.scorer.bias)
 
     def forward(self, z: Tensor, keys: Tensor, signal: Tensor, signal_mask: Tensor) -> Tensor:
-        """z [B,d], keys [N,d] (projected options), signal [B,M,d_ts], mask [B,M] -> [B,N]."""
-        queries = z.unsqueeze(1) + keys.unsqueeze(0).to(z.dtype)  # [B, N, d]
+        """z [B,d], keys [N,d] (projected options) or [B,N,d] (per sample), signal [B,M,d_ts],
+        mask [B,M] -> [B,N]."""
+        keys = keys if keys.dim() == 3 else keys.unsqueeze(0)
+        queries = z.unsqueeze(1) + keys.to(z.dtype)  # [B, N, d]
         kv = self.kv_projection(signal.to(self.kv_projection.weight.dtype))
         routed, _ = self.attention(
             queries, kv, kv, key_padding_mask=~signal_mask, need_weights=False

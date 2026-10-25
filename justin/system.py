@@ -3,6 +3,7 @@
 from typing import Literal
 
 import torch
+import torch.nn.functional as F
 from torch import Tensor, nn
 
 from .encoders import SeriesEncoder, TextEncoder
@@ -37,6 +38,7 @@ class SystemOne(nn.Module):
         fusion_layers: int = 1,
         dropout: float = 0.0,
         option_attention: bool = False,
+        noul_attention: bool = False,
         signal_skip: bool = False,
         channel_names: bool = False,
         channel_features: int = 0,
@@ -138,6 +140,16 @@ class SystemOne(nn.Module):
         )
         self.classes = nn.Embedding(num_classes, hidden_dim) if num_classes is not None else None
         self.noul = nn.Linear(hidden_dim, 1)
+        # Yes/no as a choice between two options, as Cloudflare's Clef does it: each option is a
+        # learned key plus the question's sentence embedding, and reads the signal itself through
+        # option routing; the yes-minus-no evidence is added to the linear logit.
+        if noul_attention and text_encoder is None:
+            raise ValueError("noul_attention requires a text encoder")
+        self.noul_keys = nn.Parameter(0.02 * torch.randn(2, hidden_dim)) if noul_attention else None
+        self.noul_question = nn.Linear(text_dim, hidden_dim) if noul_attention else None
+        self.noul_attention = (
+            OptionAttention(signal_dim, hidden_dim, dropout=dropout) if noul_attention else None
+        )
         self.score = nn.Linear(hidden_dim, score_levels)
 
         # The question steers the series encoder: one linear layer per leading block turns the
@@ -391,7 +403,17 @@ class SystemOne(nn.Module):
             fused = fused + self.referent_question(referent_state[0])
 
         if head == "noul":
-            return self.noul(fused).squeeze(-1)
+            logit = self.noul(fused).squeeze(-1)
+            if self.noul_attention is not None:
+                assert self.noul_keys is not None and self.noul_question is not None
+                assert q_tokens is not None and q_mask is not None
+                weights = q_mask.unsqueeze(-1).to(fused.dtype)
+                question = (q_tokens.to(fused.dtype) * weights).sum(1) / weights.sum(1).clamp_min(1)
+                question = F.normalize(question, dim=-1)  # as TextEncoder pools a sentence
+                keys = self.noul_keys.to(fused.dtype) + self.noul_question(question)[:, None]
+                evidence = self.noul_attention(fused, keys, signal, signal_mask)  # [B, 2]
+                logit = logit + evidence[:, 0] - evidence[:, 1]
+            return logit
         if head == "score":
             return self.score(fused)
         if option_embeddings is not None:
