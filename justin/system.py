@@ -8,8 +8,9 @@ from torch import Tensor, nn
 
 from .encoders import SeriesEncoder, TextEncoder
 from .fusion import ChannelHead, CrossAttentionFusion, OptionAttention
+from .kinds import KindSummary, kind_pattern
 from .lora import inject_lora
-from .referents import OPTION, QUESTION
+from .referents import _QUOTED, OPTION, QUESTION, resolve
 
 Head = Literal["choice", "noul", "score"]
 
@@ -49,6 +50,7 @@ class SystemOne(nn.Module):
         minilm_lora: bool = False,
         lora_rank: int = 8,
         lora_alpha: int = 16,
+        kind_summary: int = 0,
     ):
         super().__init__()
         # Calibration temperatures per head, filled when loading a published model.
@@ -106,6 +108,10 @@ class SystemOne(nn.Module):
         self.channel_options = (
             OptionAttention(hidden_dim, hidden_dim, dropout=dropout) if channel_head else None
         )
+        # Deviation sizes per learned metric kind (kinds.py), over all channels and the quoted ones.
+        if kind_summary and not (channel_names and channel_features):
+            raise ValueError("kind_summary requires channel_names and channel_features")
+        self.kind_summary = KindSummary(kind_summary, text_dim, hidden_dim) if kind_summary else None
         # Features of the channels a question or an option names (data/referents.py): the
         # question's go into the fused vector, each option's score reads its own.
         if referents and text_encoder is None:
@@ -284,9 +290,17 @@ class SystemOne(nn.Module):
             if len(channel_names) != batch:
                 raise ValueError("supply channel names for every batch item")
             channel_embeddings = self.channel_embeddings(channel_names)
+        kind_state = None
+        if self.kind_summary is not None and channel_names is not None:  # no names, no kinds
+            patterns = [[kind_pattern(name) for name in row] for row in channel_names]
+            quoted = torch.zeros(batch, len(channel_names[0]), dtype=torch.bool)
+            for row, (question, names) in enumerate(zip(questions or [""] * batch, channel_names, strict=True)):
+                for text in _QUOTED.findall(question)[:2]:  # as the referents read a question
+                    quoted[row, resolve(text, tuple(names))] = True
+            kind_state = (self.channel_embeddings(patterns), quoted.to(self.kind_summary.centroids.device))
         return self.answer_cached(
             features, q_tokens, q_mask, option_embeddings, head=head,
-            channel_embeddings=channel_embeddings, channel_features=channel_features,
+            channel_embeddings=channel_embeddings, channel_features=channel_features, kind_state=kind_state,
             referent_question=referent_question, referent_options=referent_options,
         )  # fmt: skip
 
@@ -302,6 +316,7 @@ class SystemOne(nn.Module):
         channel_features: Tensor | None = None,
         referent_question: Tensor | None = None,
         referent_options: Tensor | None = None,
+        kind_state: tuple[Tensor, Tensor] | None = None,
     ) -> Tensor:
         """Answer from precomputed frozen-encoder outputs; no encoder is called.
 
@@ -367,9 +382,14 @@ class SystemOne(nn.Module):
                 channel_embeddings,
                 channel_features,
             )
+        kind_vector = None
+        if self.kind_summary is not None and kind_state is not None:
+            if channel_features is None:
+                raise ValueError("this model needs channel_features")
+            kind_vector = self.kind_summary(kind_state[0], channel_features.to(signal), kind_state[1])
         return self._decode(
             signal, signal_mask, q_tokens, q_mask, option_embeddings, head, channel_state,
-            referent_state,
+            referent_state, kind_vector,
         )  # fmt: skip
 
     def _decode(
@@ -382,6 +402,7 @@ class SystemOne(nn.Module):
         head: Head,
         channel_state: tuple | None = None,
         referent_state: tuple | None = None,
+        kind_vector: Tensor | None = None,
     ) -> Tensor:
         """Trainable tail shared by answer and answer_cached: fusion + heads."""
         if self.text_encoder is not None:
@@ -401,6 +422,8 @@ class SystemOne(nn.Module):
             fused = fused + summary
         if referent_state is not None:
             fused = fused + self.referent_question(referent_state[0])
+        if kind_vector is not None:
+            fused = fused + kind_vector.to(fused)
 
         if head == "noul":
             logit = self.noul(fused).squeeze(-1)

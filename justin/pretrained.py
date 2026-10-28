@@ -44,6 +44,7 @@ def build_system(config: dict, revisions: dict[str, str] | None = None) -> Syste
         channel_features=config.get("channel_features", 0),
         channel_head=config.get("channel_head", False),
         referents=config.get("referents", False),
+        kind_summary=config.get("kind_summary", 0),
         series_condition=config.get("series_condition", 0),
         series_lora_layers=config.get("series_lora_layers", 0),
         minilm_lora=config.get("minilm_lora", False),

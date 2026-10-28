@@ -18,7 +18,7 @@ This package is inference only. Training lives in the training repository. A Rus
 ## Install
 
 ```sh
-pip install "justin @ git+https://github.com/ppweni/justin@v0.3.0"
+pip install "justin @ git+https://github.com/ppweni/justin@v0.4.0"
 ```
 
 ## Use
@@ -28,8 +28,8 @@ import numpy as np
 from justin import Justin, Location, Question
 
 repo = "ppweni/justin-timestral-minilm"
-version = "v0.3.0"  # the model version is the Hub tag
-name = "justin-v0.3.0-timestral5m-minilm-film8-lora8-noulattn"
+version = "v0.4.0"  # the model version is the Hub tag
+name = "justin-v0.4.0-timestral5m-minilm-film8-lora8-kinds12"
 model = Justin.from_pretrained(
     repo, filename=f"{name}.safetensors", revision=version,
     location=repo, location_filename=f"{name}-location.safetensors", location_revision=version,
@@ -71,7 +71,7 @@ their own repositories at the revisions the file records.
 
 | repo | file | series encoder | trained on |
 |---|---|---|---|
-| [`ppweni/justin-timestral-minilm`](https://huggingface.co/ppweni/justin-timestral-minilm) | `justin-v0.3.0-timestral5m-minilm-film8-lora8-noulattn.safetensors` (+ `-location`), tag `v0.3.0`; older versions by their tag | Timestral-5M | microservice incidents (RCAEval, Nezha, AIOps 2020) and time-series QA |
+| [`ppweni/justin-timestral-minilm`](https://huggingface.co/ppweni/justin-timestral-minilm) | `justin-v0.4.0-timestral5m-minilm-film8-lora8-kinds12.safetensors` (+ `-location`), tag `v0.4.0`; older versions by their tag | Timestral-5M | microservice incidents (RCAEval, Nezha, AIOps 2020) and time-series QA |
 | [`ppweni/justin-chronos-minilm`](https://huggingface.co/ppweni/justin-chronos-minilm) | `justin-v0.1.1-chronos2-minilm-lora4-skip.safetensors` | Chronos-2 | sleep, TSQA, ECG-QA |
 
 The location head needs a Timestral model: Chronos-2's [REG] and future-patch tokens are not positions in the
